@@ -1,0 +1,23 @@
+# Source data and generated map artifacts
+asc/
+*.pmtiles
+*.mbtiles
+*.tif
+*.tiff
+*.aux.xml
+
+# Debug/export folders
+debug/
+test-results/
+
+# Local Python/node environments and caches
+.venv/
+.venv-*/
+venv/
+node_modules/
+__pycache__/
+.pytest_cache/
+
+# OS/editor files
+.DS_Store
+
