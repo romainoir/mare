@@ -554,9 +554,10 @@
   <div id="map"></div>
   <script type="module">
     import * as maplibregl from "https://unpkg.com/maplibre-gl@6.0.0-8/dist/maplibre-gl.mjs";
-    import { PMTiles } from "https://unpkg.com/pmtiles@3.2.1/dist/index.js";
+    import { PMTiles, Protocol } from "https://unpkg.com/pmtiles@3.2.1/dist/index.js";
 
     maplibregl.setWorkerUrl(new URL("vendor/maplibre-gl-worker-6.0.0-8.mjs", window.location.href).href);
+    maplibregl.addProtocol("pmtiles", new Protocol().tile);
 
     const scaledAlpha = (value, multiplier) =>
       Math.max(0, Math.min(1, value * multiplier)).toFixed(3);
@@ -708,6 +709,7 @@
     const demDebug = pageParams.has("demDebug");
     const tideLandMaskEnabled = pageParams.get("tideMask") !== "0";
     const landMaskUrl = pageParams.get("landMask") || "data/re_landmask.geojson";
+    const useDirectPmtilesDem = demSource.type === "pmtiles" && useStaticShom;
     const demTileSize = 512;
     const initialDemSelection = demSelection;
     if (knownDemNames.includes(initialDemSelection)) {
@@ -1008,6 +1010,33 @@
     const ignOrthoTiles = () => [
       "https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2011-2015&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
     ];
+
+    const bathymetrySourceOptions = () => {
+      const common = {
+        type: "raster-dem",
+        bounds: bathymetryBounds,
+        minzoom: 11,
+        encoding: "terrarium",
+        tileSize: demTileSize
+      };
+
+      if (useDirectPmtilesDem) {
+        return {
+          ...common,
+          url: `pmtiles://${demSource.url}`
+        };
+      }
+
+      return {
+        ...common,
+        tiles: [
+          "masked-dem://bathymetrie/{z}/{x}/{y}.png"
+        ],
+        // Keep the source maxzoom behavior from the working GitHub version.
+        // This is the native request zoom for MapLibre, not a layer visibility cap.
+        maxzoom: demSourceMaxZoom
+      };
+    };
 
     const maskedDemProtocol = async (params, abortController) => {
       const { z, x, y } = parseMaskedDemUrl(params.url);
@@ -1919,19 +1948,7 @@
     });
 
     map.on("load", () => {
-      map.addSource("masked-bathymetrie", {
-        type: "raster-dem",
-        tiles: [
-          "masked-dem://bathymetrie/{z}/{x}/{y}.png"
-        ],
-        bounds: bathymetryBounds,
-        minzoom: 11,
-        // Keep the source maxzoom behavior from the working GitHub version.
-        // This is the native request zoom for MapLibre, not a layer visibility cap.
-        maxzoom: demSourceMaxZoom,
-        encoding: "terrarium",
-        tileSize: 512
-      });
+      map.addSource("masked-bathymetrie", bathymetrySourceOptions());
 
       addIgnOrthoSourceAndLayer();
 

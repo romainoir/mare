@@ -171,6 +171,18 @@ walks down to parent zooms before falling back to the offshore `-20 m` tile. Thi
 keeps `z15` test archives usable while preserving the source behavior that
 worked in the GitHub version.
 
+On GitHub Pages, the viewer bypasses `maskedDemProtocol` for the committed
+static PMTiles archive and uses the official PMTiles MapLibre protocol directly:
+
+```js
+maplibregl.addProtocol("pmtiles", new Protocol().tile);
+```
+
+The source then uses `url: "pmtiles://..."`, matching the pattern used by
+PMTiles/MapLibre examples. This avoids fragile custom range-tile handling on
+Pages while local development can still use `pmtiles serve` through
+`maskedDemProtocol`.
+
 For debugging tile overzoom, add `?demDebug=1` to the viewer URL and inspect the
 console logs for `DEM tile hit` / `DEM tile miss`.
 
