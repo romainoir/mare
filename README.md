@@ -66,6 +66,10 @@ data/re_landmask.geojson
 
 You can test another mask with `?landMask=path/to/mask.geojson`.
 
+On GitHub Pages, the app uses static SHOM JSON files under `data/shom/` because
+the SHOM service does not allow browser CORS requests from Pages. The committed
+static cache currently covers Saint-Martin-de-Re only.
+
 ## Data
 
 Large local data and generated artifacts are intentionally not tracked in Git:

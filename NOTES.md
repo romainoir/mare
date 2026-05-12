@@ -18,6 +18,9 @@ PMTiles.
   `viewer.html?dem=bathymetrie_aquitaine_z15_unmasked&demMaxZoom=15`
 - The debug panel exposes the same DEM switcher. It rewrites the URL with
   `dem`, `demMaxZoom`, and a cache-busting `v` parameter.
+- GitHub Pages cannot call the local SHOM proxy or direct SHOM endpoints because
+  of HTTPS/CORS. It reads static JSON from `data/shom/`; the committed cache is
+  intentionally limited to `SAINT-MARTIN_DE_RE`.
 
 Large source and generated data are local-only and ignored by Git:
 

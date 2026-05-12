@@ -513,7 +513,7 @@
     </div>
     <svg id="maregramChart" class="maregram-chart" viewBox="0 0 760 158" role="img" aria-label="Marée"></svg>
   </div>
-  <img class="app-logo" src="logo%20MaRe%CC%81.png" alt="MaRé">
+  <img class="app-logo" src="logo-mare.png" alt="MaRe">
   <div id="debugPanel" class="debug-panel" hidden>
     <label class="debug-field">
       <span>Port</span>
@@ -637,10 +637,12 @@
       cursorLine: null,
       cursorPoint: null
     };
-    const shomProxyBase = "http://127.0.0.1:8002";
     const pageParams = new URLSearchParams(window.location.search);
     const requestedDemTileBase = pageParams.get("dem");
     const isLocalRuntime = ["", "localhost", "127.0.0.1"].includes(window.location.hostname);
+    const useStaticShom = !isLocalRuntime;
+    const shomProxyBase = "http://127.0.0.1:8002";
+    const shomStaticCache = new Map();
     const localDemTileBase = "http://127.0.0.1:8080";
     const localDefaultDemName = "bathymetrie_aquitaine_1m_512_composite";
     const pagesDefaultDemName = "bathymetrie_aquitaine_z15_unmasked";
@@ -753,10 +755,7 @@
     let tideLayerOpacity = Number(tideOpacityRange.value) / 100;
 
     const fallbackStations = [
-      { cst: "SAINT-MARTIN_DE_RE", toponyme: "Saint-Martin-de-Re (Ile de Re)", lat: 46.208, lon: -1.3655, ut: 10 },
-      { cst: "LA_ROCHELLE-PALLICE", toponyme: "La Rochelle - La Pallice", lat: 46.16, lon: -1.221667, ut: 10 },
-      { cst: "ARCACHON_EYRAC", toponyme: "Arcachon", lat: 44.664333, lon: -1.163667, ut: 10 },
-      { cst: "LES_SABLES-D_OLONNE", toponyme: "Les Sables d'Olonne", lat: 46.4975, lon: -1.793611, ut: 10 }
+      { cst: "SAINT-MARTIN_DE_RE", toponyme: "Saint-Martin-de-Re (Ile de Re)", lat: 46.208, lon: -1.3655, ut: 10 }
     ];
 
     const todayString = () => {
@@ -1256,10 +1255,48 @@
 
     const monthCacheKey = (year, month) => `${tideStation.value}:${year}-${String(month).padStart(2, "0")}`;
 
+    const fetchStaticShomJson = async (...parts) => {
+      const path = `data/shom/${parts.map((part) => encodeURIComponent(part)).join("/")}.json`;
+      if (!shomStaticCache.has(path)) {
+        shomStaticCache.set(path, fetch(path).then((response) => {
+          if (!response.ok) {
+            throw new Error(`static SHOM HTTP ${response.status}`);
+          }
+          return response.json();
+        }));
+      }
+      return shomStaticCache.get(path);
+    };
+
+    const tideRowsFromPayload = (payload) => {
+      const rows = Object.entries(payload).flatMap(([date, values]) =>
+        values.map(([time, height]) => ({
+          time: new Date(`${date}T${time}`),
+          height: Number(height)
+        }))
+      );
+      if (!rows.length) {
+        throw new Error("empty tide response");
+      }
+      return rows;
+    };
+
     const fetchMonthlyCoefficients = async (year, month) => {
       const cacheKey = monthCacheKey(year, month);
       if (monthCoefficientCache.has(cacheKey)) {
         return monthCoefficientCache.get(cacheKey);
+      }
+      if (useStaticShom) {
+        const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+        const payload = await fetchStaticShomJson("coeff", tideStation.value, String(year));
+        const rows = Array.from({ length: daysInMonth(year, month) }, (_, index) => {
+          const values = Array.isArray(payload?.[monthKey]?.[index]) ? payload[monthKey][index] : [];
+          return values
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value));
+        });
+        monthCoefficientCache.set(cacheKey, rows);
+        return rows;
       }
       const station = selectedHarbor();
       const url = new URL(`${shomProxyBase}/shom/coeff`);
@@ -1556,6 +1593,9 @@
 
     const loadStations = async () => {
       populateStations(fallbackStations);
+      if (useStaticShom) {
+        return;
+      }
       try {
         const response = await fetch(`${shomProxyBase}/shom/harbors`);
         const payload = await response.json();
@@ -1570,6 +1610,14 @@
     };
 
     const fetchTideData = async () => {
+      if (useStaticShom) {
+        const [year, month] = tideDate.value.split("-").map(Number);
+        const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+        const payload = await fetchStaticShomJson("wl", tideStation.value, monthKey);
+        const values = payload[tideDate.value] ?? [];
+        return tideRowsFromPayload({ [tideDate.value]: values });
+      }
+
       const url = new URL(`${shomProxyBase}/shom/wl`);
       url.search = new URLSearchParams({
         harborName: tideStation.value,
@@ -1584,32 +1632,29 @@
       if (!response.ok) {
         throw new Error(`SHOM HTTP ${response.status}`);
       }
-      const rows = Object.entries(payload).flatMap(([date, values]) =>
-        values.map(([time, height]) => ({
-          time: new Date(`${date}T${time}`),
-          height: Number(height)
-        }))
-      );
-      if (!rows.length) {
-        throw new Error("empty SHOM response");
-      }
-      return rows;
+      return tideRowsFromPayload(payload);
     };
 
     const fetchTideEvents = async () => {
-      const url = new URL(`${shomProxyBase}/shom/hlt`);
-      url.search = new URLSearchParams({
-        harborName: tideStation.value,
-        duration: "7",
-        date: tideDate.value,
-        utc: "standard",
-        correlation: "1"
-      });
+      let payload;
+      if (useStaticShom) {
+        const [year] = tideDate.value.split("-").map(Number);
+        payload = await fetchStaticShomJson("hlt", tideStation.value, String(year));
+      } else {
+        const url = new URL(`${shomProxyBase}/shom/hlt`);
+        url.search = new URLSearchParams({
+          harborName: tideStation.value,
+          duration: "7",
+          date: tideDate.value,
+          utc: "standard",
+          correlation: "1"
+        });
 
-      const response = await fetch(url);
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(`SHOM HLT HTTP ${response.status}`);
+        const response = await fetch(url);
+        payload = await response.json();
+        if (!response.ok) {
+          throw new Error(`SHOM HLT HTTP ${response.status}`);
+        }
       }
       const rows = payload[tideDate.value] ?? [];
       return rows
@@ -1624,23 +1669,8 @@
 
     const fetchCoefficient = async () => {
       const [year, month, day] = tideDate.value.split("-").map(Number);
-      const station = selectedHarbor();
-      const url = new URL(`${shomProxyBase}/shom/coeff`);
-      url.search = new URLSearchParams({
-        harborName: tideStation.value,
-        duration: coefficientDuration(year, month),
-        date: `${year}-${String(month).padStart(2, "0")}-01`,
-        utc: String(Number(station?.ut ?? 10) / 10),
-        correlation: "1"
-      });
-
-      const response = await fetch(url);
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(`SHOM coeff HTTP ${response.status}`);
-      }
-      const values = Array.isArray(payload?.[0]?.[day - 1]) ? payload[0][day - 1] : [];
-      return values
+      const monthRows = await fetchMonthlyCoefficients(year, month);
+      return (monthRows[day - 1] ?? [])
         .map((value) => Number(value))
         .filter((value) => Number.isFinite(value));
     };
