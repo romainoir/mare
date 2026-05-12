@@ -19,8 +19,9 @@ PMTiles.
 - The debug panel exposes the same DEM switcher. It rewrites the URL with
   `dem`, `demMaxZoom`, and a cache-busting `v` parameter.
 - GitHub Pages cannot call the local SHOM proxy or direct SHOM endpoints because
-  of HTTPS/CORS. It reads static JSON from `data/shom/`; the committed cache is
-  intentionally limited to `SAINT-MARTIN_DE_RE`.
+  of HTTPS/CORS. It reads a single static tide calendar from
+  `data/shom/SAINT-MARTIN_DE_RE.json`; the committed cache is intentionally
+  limited to `SAINT-MARTIN_DE_RE`.
 
 Large source and generated data are local-only and ignored by Git:
 
@@ -207,6 +208,28 @@ Nominatim.
 If artifacts appear exactly on land boundaries, inspect the mask protocol and
 resampling. If artifacts appear at a fixed tide/DEM elevation everywhere, inspect
 the SHOM-to-DEM offset first.
+
+## Static Tide Calendar
+
+The Pages build stores tide data as one JSON file per station, currently:
+
+```text
+data/shom/SAINT-MARTIN_DE_RE.json
+```
+
+The file stores high/low tide events and coefficients, not dense 5-minute water
+level rows. In static mode, `viewer.html` reconstructs the maregram with a cosine
+interpolation between each pair of successive extrema:
+
+```js
+height = previous.height + (next.height - previous.height) * (1 - cos(pi * t)) / 2
+```
+
+This keeps the curve smooth with zero slope at each high/low tide and avoids
+shipping large daily water-level arrays. The public SHOM endpoints available
+without a subscription currently reject long future periods, so extending this
+file to 2026-2028 with authoritative predictions requires access to the SHOM
+SPM/SAPM service for those dates.
 
 ## MapLibre
 

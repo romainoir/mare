@@ -66,9 +66,12 @@ data/re_landmask.geojson
 
 You can test another mask with `?landMask=path/to/mask.geojson`.
 
-On GitHub Pages, the app uses static SHOM JSON files under `data/shom/` because
-the SHOM service does not allow browser CORS requests from Pages. The committed
-static cache currently covers Saint-Martin-de-Re only.
+On GitHub Pages, the app uses a single static tide calendar at
+`data/shom/SAINT-MARTIN_DE_RE.json` because the SHOM service does not allow
+browser CORS requests from Pages. The committed static cache currently covers
+Saint-Martin-de-Re only. It stores high/low tide events and coefficients; the
+viewer reconstructs the maregram with cosine interpolation between successive
+high and low tides.
 
 ## Data
 
