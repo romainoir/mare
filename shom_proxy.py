@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+from pathlib import Path
 import ssl
 from urllib.parse import urlencode, urlparse, parse_qs
 from urllib.request import Request, urlopen
@@ -11,9 +12,9 @@ PORT = 8002
 SHOM_REFERER = "https://maree.shom.fr/"
 SHOM_HDM = "https://services.data.shom.fr/b2q8lrcdl4s04cbabsj4nhcb/hdm"
 SHOM_WFS = "https://services.data.shom.fr/x13f1b4faeszdyinv9zqxmx1/wfs"
-OSM_NOMINATIM = "https://nominatim.openstreetmap.org/search"
 SSL_CONTEXT = ssl._create_unverified_context()
-OSM_LAND_MASK_CACHE = None
+LAND_MASK_PATH = Path(__file__).resolve().parent / "data" / "re_landmask.geojson"
+LAND_MASK_CACHE = None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -42,7 +43,7 @@ class Handler(BaseHTTPRequestHandler):
             self.proxy_shom_coefficients(parsed.query)
             return
         if parsed.path == "/osm/land-mask":
-            self.proxy_osm_land_mask()
+            self.serve_land_mask()
             return
         self.send_error(404, "Not found")
 
@@ -90,37 +91,28 @@ class Handler(BaseHTTPRequestHandler):
         }
         self.proxy(f"{SHOM_WFS}?{urlencode(params)}")
 
-    def proxy_osm_land_mask(self):
-        global OSM_LAND_MASK_CACHE
-        if OSM_LAND_MASK_CACHE is None:
-            params = {
-                "format": "geojson",
-                "polygon_geojson": "1",
-                "limit": "1",
-                "q": "Île de Ré",
-            }
-            request = Request(
-                f"{OSM_NOMINATIM}?{urlencode(params)}",
-                headers={
-                    "User-Agent": "Estran local tide viewer",
-                    "Accept": "application/geo+json, application/json",
-                    "Accept-Language": "fr",
-                },
-            )
-            with urlopen(request, timeout=20, context=SSL_CONTEXT) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-            OSM_LAND_MASK_CACHE = {
+    def serve_land_mask(self):
+        global LAND_MASK_CACHE
+        if LAND_MASK_CACHE is None:
+            payload = json.loads(LAND_MASK_PATH.read_text(encoding="utf-8"))
+            if payload.get("type") == "FeatureCollection":
+                features = payload.get("features", [])
+            elif payload.get("type") == "Feature":
+                features = [payload]
+            else:
+                features = [{"type": "Feature", "properties": {}, "geometry": payload}]
+            LAND_MASK_CACHE = {
                 "type": "FeatureCollection",
                 "features": [
-                    feature for feature in payload.get("features", [])
+                    feature for feature in features
                     if feature.get("geometry", {}).get("type") in {"Polygon", "MultiPolygon"}
                 ],
             }
 
-        body = json.dumps(OSM_LAND_MASK_CACHE).encode("utf-8")
+        body = json.dumps(LAND_MASK_CACHE).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/geo+json; charset=utf-8")
-        self.send_header("Cache-Control", "max-age=86400")
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 

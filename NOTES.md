@@ -1,23 +1,28 @@
 # Estran maintenance notes
 
 This project renders a tide-aware coastal view with MapLibre, SHOM tide data,
-IGN orthophoto, an OSM land mask, and a bathymetry DEM encoded as Terrarium
+IGN orthophoto, a local land mask, and a bathymetry DEM encoded as Terrarium
 PMTiles.
 
 ## Current runtime
 
 - Main app: `viewer.html`
-- SHOM/OSM proxy: `shom_proxy.py`, expected on `http://127.0.0.1:8002`
+- SHOM proxy: `shom_proxy.py`, expected on `http://127.0.0.1:8002`
 - HTML server: usually `python3 -m http.server 8000 --bind 127.0.0.1`
 - PMTiles server: usually `pmtiles serve . --interface=127.0.0.1 --port=8080 --cors=*`
-- Current DEM in the viewer: `bathymetrie_aquitaine_1m_512_composite.pmtiles`
-- Current DEM tile URL base in `viewer.html`:
+- Local default DEM in the viewer: `bathymetrie_aquitaine_1m_512_composite.pmtiles`
+- Local default DEM tile URL base in `viewer.html`:
   `http://127.0.0.1:8080/bathymetrie_aquitaine_1m_512_composite`
+- GitHub Pages default DEM: `bathymetrie_aquitaine_z15_unmasked.pmtiles`
+- Alternate DEMs can be tested with `?dem=<pmtiles-basename>`, for example:
+  `viewer.html?dem=bathymetrie_aquitaine_z15_unmasked&demMaxZoom=15`
+- The debug panel exposes the same DEM switcher. It rewrites the URL with
+  `dem`, `demMaxZoom`, and a cache-busting `v` parameter.
 
 Large source and generated data are local-only and ignored by Git:
 
 - `asc/`
-- `*.pmtiles`
+- `*.pmtiles`, except `bathymetrie_aquitaine_z15_unmasked.pmtiles`
 - debug exports
 
 ## Bathymetry PMTiles generation
@@ -56,6 +61,17 @@ Current generator defaults:
 - `MAX_ZOOM=18`
 - `FULL_RESOLUTION_ZOOM=19`
 - `NODATA_FILL_ELEVATION=-20`
+
+GitHub Pages archive:
+
+```bash
+MAX_ZOOM=15 ./generer_pmtiles.sh asc bathymetrie_aquitaine_z15_unmasked.pmtiles
+```
+
+Measured size:
+
+- `bathymetrie_aquitaine_z15_unmasked.pmtiles`: about `54 MB`, small enough to
+  commit for GitHub Pages testing.
 
 Current PMTiles metadata after generation:
 
@@ -138,11 +154,40 @@ maplibregl.addProtocol("masked-dem", maskedDemProtocol);
 The protocol fetches the PMTiles-served Terrarium PNG tile, then applies:
 
 - missing/empty ocean tile -> `-20 m`
-- OSM land mask -> `12000 m`
+- local land mask -> `12000 m`, unless `tideMask=0`
 
-The land mask comes from `shom_proxy.py` at `/osm/land-mask`. The high land value
-makes land transparent in the tide `color-relief`, because it is far above the
-last color stop.
+The MapLibre `raster-dem` source keeps the working GitHub behavior with source
+`maxzoom=18`. This is not a tide layer visibility cap; it tells MapLibre the
+native tile request ceiling. The layer can still render above it.
+
+`maskedDemProtocol` handles lower-resolution archives itself. It infers the
+native DEM max zoom from the `?dem=` basename (`z15`, `z16`, etc.) or from
+`?demMaxZoom=...`, fetches the parent native tile, and crops/upscales it with
+image smoothing disabled. If a requested/native tile is missing, the protocol
+walks down to parent zooms before falling back to the offshore `-20 m` tile. This
+keeps `z15` test archives usable while preserving the source behavior that
+worked in the GitHub version.
+
+For debugging tile overzoom, add `?demDebug=1` to the viewer URL and inspect the
+console logs for `DEM tile hit` / `DEM tile miss`.
+
+The debug panel can disable the runtime tide land mask. For full tide
+color-relief over the orthophoto, use `bathymetrie_aquitaine_z15_unmasked` with
+`tideMask=0`.
+
+The runtime land mask defaults to:
+
+```text
+data/re_landmask.geojson
+```
+
+It can be overridden with `?landMask=path/to/mask.geojson`. The high land value
+makes masked land transparent in the tide `color-relief`, because it is far above
+the last color stop.
+
+For backward compatibility, `shom_proxy.py` still serves `/osm/land-mask`, but it
+now returns the same local `data/re_landmask.geojson` content rather than querying
+Nominatim.
 
 If artifacts appear exactly on land boundaries, inspect the mask protocol and
 resampling. If artifacts appear at a fixed tide/DEM elevation everywhere, inspect

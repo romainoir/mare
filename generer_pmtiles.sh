@@ -253,6 +253,10 @@ def union_bounds(a, b):
         max(a[3], b[3]),
     )
 
+def downsample_parent(full):
+    blocks = full.reshape((tile_size, 2, tile_size, 2))
+    return blocks.mean(axis=(1, 3))
+
 def write_archive(tile_root, output_path, bounds_wgs84):
     tile_ids = []
     for root, _, files in os.walk(tile_root):
@@ -382,7 +386,7 @@ with rasterio.open(source_path) as src, fallback_context as fallback_src, tempfi
                     col_start = col_offset * tile_size
                     full[row_start:row_start + tile_size, col_start:col_start + tile_size] = decode_terrarium(child_path)
 
-            parent_data = full.reshape((tile_size, 2, tile_size, 2)).mean(axis=(1, 3))
+            parent_data = downsample_parent(full)
             save_png(encode_terrarium(parent_data, z), os.path.join(parent_dir, f"{parent.z}-{parent.x}-{parent.y}.png"))
 
     write_archive(tile_root, output_path, (west, south, east, north))

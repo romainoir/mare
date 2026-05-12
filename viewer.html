@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bathymetrie 3D - Litto3D</title>
+  <title>MaRe</title>
   <link rel="icon" href="data:,">
   <link href="https://unpkg.com/maplibre-gl@6.0.0-8/dist/maplibre-gl.css" rel="stylesheet">
   <style>
@@ -117,6 +117,8 @@
       bottom: 40px;
       z-index: 5;
       width: min(410px, calc(100vw - 32px));
+      box-sizing: border-box;
+      height: min(438px, calc(100vh - 78px));
       border: 1px solid rgba(15, 23, 42, 0.18);
       border-radius: 6px;
       background: #f8fafc;
@@ -133,6 +135,7 @@
       display: grid;
       grid-template-columns: 34px 1fr 34px;
       align-items: center;
+      height: 37px;
       background: #0f3b70;
       color: #ffffff;
     }
@@ -165,12 +168,13 @@
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 1px;
+      height: calc(100% - 37px);
       background: rgba(148, 163, 184, 0.35);
     }
 
     .calendar-column {
       display: grid;
-      align-content: start;
+      grid-template-rows: repeat(12, 1fr);
       background: #ffffff;
     }
 
@@ -179,12 +183,13 @@
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 6px;
-      min-height: 25px;
       align-items: start;
-      padding: 5px 10px;
+      min-height: 0;
+      padding: 3px 9px;
       border: 0;
       color: #1f2937;
-      font: 13px/1.15 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font: 12px/1.05 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
     }
 
     .calendar-column-head {
@@ -213,11 +218,14 @@
 
     .calendar-day-coeff {
       text-align: right;
+      line-height: 1.05;
       white-space: pre-line;
     }
 
     .calendar-loading {
       grid-column: 1 / -1;
+      box-sizing: border-box;
+      min-height: 100%;
       padding: 18px;
       background: #ffffff;
       color: #475569;
@@ -377,6 +385,7 @@
       font-size: 12px;
     }
 
+    .debug-field input,
     .debug-field select {
       min-height: 30px;
       min-width: 0;
@@ -385,6 +394,23 @@
       background: #ffffff;
       color: #1f2937;
       font: 13px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .debug-apply-button {
+      appearance: none;
+      min-height: 31px;
+      border: 1px solid rgba(37, 99, 235, 0.42);
+      border-radius: 5px;
+      background: #2563eb;
+      color: #ffffff;
+      font: 700 12px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      cursor: pointer;
+    }
+
+    .debug-apply-button:hover,
+    .debug-apply-button:focus-visible {
+      background: #1d4ed8;
+      outline: none;
     }
 
     .ortho-toggle {
@@ -493,6 +519,20 @@
       <span>Port</span>
       <select id="tideStation"></select>
     </label>
+    <label class="debug-field">
+      <span>PMTiles</span>
+      <select id="demTilesSelect">
+        <option value="bathymetrie_aquitaine_1m_512_composite">composite z18</option>
+        <option value="bathymetrie_aquitaine_z15_unmasked">z15 GitHub</option>
+        <option value="custom">autre...</option>
+      </select>
+      <input id="demTilesCustomInput" type="text" spellcheck="false" autocomplete="off" placeholder="nom ou URL PMTiles">
+    </label>
+    <label class="debug-field">
+      <span>Zoom max natif</span>
+      <input id="demMaxZoomInput" type="number" min="0" max="22" step="1">
+    </label>
+    <button id="applyDemButton" class="debug-apply-button" type="button">Charger PMTiles</button>
     <label class="ortho-toggle">
       <input id="ignOrthoToggle" type="checkbox" checked>
       <span>IGN</span>
@@ -500,6 +540,10 @@
     <label class="ortho-toggle">
       <input id="tideOverlayToggle" type="checkbox" checked>
       <span>Eau</span>
+    </label>
+    <label class="ortho-toggle">
+      <input id="tideLandMaskToggle" type="checkbox" checked>
+      <span>Masque terre marée</span>
     </label>
     <label class="debug-range-control">
       <span>Opacité eau</span>
@@ -510,6 +554,7 @@
   <div id="map"></div>
   <script type="module">
     import * as maplibregl from "https://unpkg.com/maplibre-gl@6.0.0-8/dist/maplibre-gl.mjs";
+    import { PMTiles } from "https://unpkg.com/pmtiles@3.2.1/dist/index.js";
 
     maplibregl.setWorkerUrl(new URL("vendor/maplibre-gl-worker-6.0.0-8.mjs", window.location.href).href);
 
@@ -573,8 +618,13 @@
     const maregramHeight = document.getElementById("maregramHeight");
     const maregramCoeff = document.getElementById("maregramCoeff");
     const debugPanel = document.getElementById("debugPanel");
+    const demTilesSelect = document.getElementById("demTilesSelect");
+    const demTilesCustomInput = document.getElementById("demTilesCustomInput");
+    const demMaxZoomInput = document.getElementById("demMaxZoomInput");
+    const applyDemButton = document.getElementById("applyDemButton");
     const ignOrthoToggle = document.getElementById("ignOrthoToggle");
     const tideOverlayToggle = document.getElementById("tideOverlayToggle");
+    const tideLandMaskToggle = document.getElementById("tideLandMaskToggle");
     const tideOpacityRange = document.getElementById("tideOpacityRange");
     const tideOpacityValue = document.getElementById("tideOpacityValue");
     const svgNS = "http://www.w3.org/2000/svg";
@@ -588,9 +638,87 @@
       cursorPoint: null
     };
     const shomProxyBase = "http://127.0.0.1:8002";
-    const demTileBase = "http://127.0.0.1:8080/bathymetrie_aquitaine_1m_512_composite";
-    const demTileVersion = "20260509-composite-nm";
+    const pageParams = new URLSearchParams(window.location.search);
+    const requestedDemTileBase = pageParams.get("dem");
+    const isLocalRuntime = ["", "localhost", "127.0.0.1"].includes(window.location.hostname);
+    const localDemTileBase = "http://127.0.0.1:8080";
+    const localDefaultDemName = "bathymetrie_aquitaine_1m_512_composite";
+    const pagesDefaultDemName = "bathymetrie_aquitaine_z15_unmasked";
+    const defaultDemName = isLocalRuntime ? localDefaultDemName : pagesDefaultDemName;
+    const isHttpUrl = (value) => /^https?:\/\//i.test(value);
+    const isPmtilesArchive = (value) => /\.pmtiles(?:$|[?#])/i.test(value);
+    const normalizeDemSelection = (value) => {
+      const cleanValue = value.trim();
+      if (!cleanValue) {
+        return "";
+      }
+      if (isHttpUrl(cleanValue)) {
+        return cleanValue.replace(/\/$/, "");
+      }
+      return cleanValue.replace(/\.pmtiles$/i, "");
+    };
+    const resolveDemSource = (value) => {
+      const rawValue = (value || defaultDemName).trim();
+      const cleanValue = normalizeDemSelection(rawValue);
+      const archiveRequested = isPmtilesArchive(rawValue);
+
+      if (isHttpUrl(cleanValue)) {
+        return {
+          type: isPmtilesArchive(cleanValue) ? "pmtiles" : "tile-endpoint",
+          url: cleanValue.replace(/\/$/, "")
+        };
+      }
+
+      const basename = cleanValue.replace(/\.pmtiles$/i, "");
+      if (isLocalRuntime && !archiveRequested) {
+        return {
+          type: "tile-endpoint",
+          url: `${localDemTileBase}/${basename}`
+        };
+      }
+
+      return {
+        type: "pmtiles",
+        url: new URL(`${basename}.pmtiles`, window.location.href).href
+      };
+    };
+    const demSelection = normalizeDemSelection(requestedDemTileBase || defaultDemName);
+    const demSource = resolveDemSource(requestedDemTileBase || defaultDemName);
+    const demTileVersion = pageParams.get("demVersion") ?? demSelection;
+    const demNativeMinZoom = 11;
+    const demSourceMaxZoom = Number(pageParams.get("demSourceMaxZoom")) || 18;
+    const knownDemNames = [
+      localDefaultDemName,
+      pagesDefaultDemName
+    ];
+    const inferDemNativeMaxZoomFromValue = (value) => {
+      const match = value.match(/(?:^|[_-])z(\d{1,2})(?:[_-]|$)/i);
+      return match ? Number(match[1]) : 18;
+    };
+    const inferDemNativeMaxZoom = () => {
+      const explicitZoom = Number(pageParams.get("demMaxZoom") ?? pageParams.get("demNativeMaxZoom"));
+      if (Number.isInteger(explicitZoom) && explicitZoom >= 0) {
+        return explicitZoom;
+      }
+      return inferDemNativeMaxZoomFromValue(demSelection);
+    };
+    const demNativeMaxZoom = inferDemNativeMaxZoom();
+    const demDebug = pageParams.has("demDebug");
+    const tideLandMaskEnabled = pageParams.get("tideMask") !== "0";
+    const landMaskUrl = pageParams.get("landMask") || "data/re_landmask.geojson";
     const demTileSize = 512;
+    const initialDemSelection = demSelection;
+    if (knownDemNames.includes(initialDemSelection)) {
+      demTilesSelect.value = initialDemSelection;
+      demTilesCustomInput.value = "";
+      demTilesCustomInput.hidden = true;
+    } else {
+      demTilesSelect.value = "custom";
+      demTilesCustomInput.value = initialDemSelection;
+      demTilesCustomInput.hidden = false;
+    }
+    demMaxZoomInput.value = String(demNativeMaxZoom);
+    tideLandMaskToggle.checked = tideLandMaskEnabled;
     const namedPlaces = {
       type: "FeatureCollection",
       features: [
@@ -731,12 +859,14 @@
         data[index + 3] = 255;
       }
 
-      const maskData = (await renderLandMaskImageData(z, x, y, demTileSize)).data;
-      for (let index = 0; index < data.length; index += 4) {
-        if (maskData[index + 3] > 0) {
-          data[index] = landMaskColor[0];
-          data[index + 1] = landMaskColor[1];
-          data[index + 2] = landMaskColor[2];
+      if (tideLandMaskEnabled) {
+        const maskData = (await renderLandMaskImageData(z, x, y, demTileSize)).data;
+        for (let index = 0; index < data.length; index += 4) {
+          if (maskData[index + 3] > 0) {
+            data[index] = landMaskColor[0];
+            data[index + 1] = landMaskColor[1];
+            data[index + 2] = landMaskColor[2];
+          }
         }
       }
       context.putImageData(imageData, 0, 0);
@@ -744,10 +874,10 @@
     };
 
     const loadLandMask = () => {
-      landMaskPromise ??= fetch(`${shomProxyBase}/osm/land-mask`)
+      landMaskPromise ??= fetch(landMaskUrl)
         .then((response) => {
           if (!response.ok) {
-            throw new Error(`OSM land mask HTTP ${response.status}`);
+            throw new Error(`Land mask HTTP ${response.status}`);
           }
           return response.json();
         });
@@ -809,41 +939,116 @@
       };
     };
 
+    const nativeDemTileForRequest = (z, x, y, nativeMaxZoom = demNativeMaxZoom) => {
+      if (z <= nativeMaxZoom) {
+        return { z, x, y, crop: null, overzoomDelta: 0 };
+      }
+      const zoomDelta = z - nativeMaxZoom;
+      const scale = 2 ** zoomDelta;
+      const cropSize = demTileSize / scale;
+      return {
+        z: nativeMaxZoom,
+        x: Math.floor(x / scale),
+        y: Math.floor(y / scale),
+        overzoomDelta: zoomDelta,
+        crop: {
+          x: (x % scale) * cropSize,
+          y: (y % scale) * cropSize,
+          size: cropSize
+        }
+      };
+    };
+
+    let demArchive = null;
+    const demPmtilesArchive = () => {
+      demArchive ??= new PMTiles(demSource.url);
+      return demArchive;
+    };
+
+    const fetchDemTileData = async (nativeTile, abortController) => {
+      if (demSource.type === "pmtiles") {
+        const tile = await demPmtilesArchive().getZxy(
+          nativeTile.z,
+          nativeTile.x,
+          nativeTile.y,
+          abortController?.signal
+        );
+        return tile ? { status: 200, data: tile.data } : { status: 404, data: null };
+      }
+
+      const tileUrl = `${demSource.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png?v=${demTileVersion}`;
+      const response = await fetch(tileUrl, { signal: abortController?.signal });
+      if (!response.ok) {
+        return { status: response.status, data: null };
+      }
+      return { status: response.status, data: await response.arrayBuffer() };
+    };
+
+    const fetchDemTileWithParentFallback = async (z, x, y, abortController) => {
+      const firstZoom = Math.min(z, demNativeMaxZoom);
+      for (let candidateZoom = firstZoom; candidateZoom >= demNativeMinZoom; candidateZoom -= 1) {
+        const nativeTile = nativeDemTileForRequest(z, x, y, candidateZoom);
+        const tile = await fetchDemTileData(nativeTile, abortController);
+        if (tile.status === 204 || tile.status === 404) {
+          if (demDebug) {
+            console.info("DEM tile miss", { requested: { z, x, y }, nativeTile, status: tile.status });
+          }
+          continue;
+        }
+        if (tile.status < 200 || tile.status >= 300) {
+          throw new Error(`DEM tile HTTP ${tile.status}`);
+        }
+        if (demDebug) {
+          console.info("DEM tile hit", { requested: { z, x, y }, nativeTile, source: demSource.type });
+        }
+        return { nativeTile, data: tile.data };
+      }
+      return null;
+    };
+
     const ignOrthoTiles = () => [
       "https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2011-2015&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
     ];
-    
-      //"https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=HR.ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
 
     const maskedDemProtocol = async (params, abortController) => {
       const { z, x, y } = parseMaskedDemUrl(params.url);
-      const cacheKey = `${z}/${x}/${y}`;
+      const cacheKey = `${demSource.type}/${demSource.url}/${demTileVersion}/${demNativeMaxZoom}/${z}/${x}/${y}`;
       const cached = landMaskTileCache.get(cacheKey);
       if (cached) {
         return { data: cached.slice(0) };
       }
 
-      const response = await fetch(`${demTileBase}/${z}/${x}/${y}.png?v=${demTileVersion}`, {
-        signal: abortController?.signal
-      });
-      if (response.status === 204 || response.status === 404) {
+      const tileResult = await fetchDemTileWithParentFallback(z, x, y, abortController);
+      if (!tileResult) {
         const emptyTile = await noDataOceanTileBuffer(z, x, y);
         landMaskTileCache.set(cacheKey, emptyTile);
         return { data: emptyTile.slice(0) };
       }
-      if (!response.ok) {
-        throw new Error(`DEM tile HTTP ${response.status}`);
-      }
 
-      const sourceBuffer = await response.arrayBuffer();
+      const { nativeTile, data: sourceBuffer } = tileResult;
       const bitmap = await createImageBitmap(new Blob([sourceBuffer], { type: "image/png" }));
       const canvas = createRasterCanvas(demTileSize, demTileSize);
       const context = canvas.getContext("2d", { willReadFrequently: true });
-      context.drawImage(bitmap, 0, 0, demTileSize, demTileSize);
+      context.imageSmoothingEnabled = false;
+      if (nativeTile.crop) {
+        context.drawImage(
+          bitmap,
+          nativeTile.crop.x,
+          nativeTile.crop.y,
+          nativeTile.crop.size,
+          nativeTile.crop.size,
+          0,
+          0,
+          demTileSize,
+          demTileSize
+        );
+      } else {
+        context.drawImage(bitmap, 0, 0, demTileSize, demTileSize);
+      }
       bitmap.close?.();
 
       const imageData = context.getImageData(0, 0, demTileSize, demTileSize);
-      const maskData = (await renderLandMaskImageData(z, x, y, demTileSize)).data;
+      const maskData = tideLandMaskEnabled ? (await renderLandMaskImageData(z, x, y, demTileSize)).data : null;
       const data = imageData.data;
       for (let index = 0; index < data.length; index += 4) {
         if (data[index + 3] < 128) {
@@ -852,7 +1057,7 @@
           data[index + 2] = noDataOceanColor[2];
           data[index + 3] = 255;
         }
-        if (maskData[index + 3] > 0) {
+        if (maskData && maskData[index + 3] > 0) {
           data[index] = landMaskColor[0];
           data[index + 1] = landMaskColor[1];
           data[index + 2] = landMaskColor[2];
@@ -898,6 +1103,44 @@
       if (map.getLayer("tide-foam")) {
         map.setLayoutProperty("tide-foam", "visibility", visible ? "visible" : "none");
       }
+    };
+
+    const selectedDemInputValue = () => (
+      demTilesSelect.value === "custom"
+        ? demTilesCustomInput.value
+        : demTilesSelect.value
+    );
+
+    const applyDemSelection = () => {
+      const selectedDem = normalizeDemSelection(selectedDemInputValue());
+      const nativeMaxZoom = Number(demMaxZoomInput.value);
+      const url = new URL(window.location.href);
+
+      if (selectedDem) {
+        url.searchParams.set("dem", selectedDem);
+      } else {
+        url.searchParams.delete("dem");
+      }
+
+      if (Number.isInteger(nativeMaxZoom) && nativeMaxZoom >= 0 && nativeMaxZoom <= 22) {
+        url.searchParams.set("demMaxZoom", String(nativeMaxZoom));
+      } else {
+        url.searchParams.delete("demMaxZoom");
+      }
+
+      url.searchParams.set("v", `dem-${Date.now()}`);
+      window.location.href = url.toString();
+    };
+
+    const applyTideLandMaskSelection = () => {
+      const url = new URL(window.location.href);
+      if (tideLandMaskToggle.checked) {
+        url.searchParams.delete("tideMask");
+      } else {
+        url.searchParams.set("tideMask", "0");
+      }
+      url.searchParams.set("v", `mask-${Date.now()}`);
+      window.location.href = url.toString();
     };
 
     const addIgnOrthoSourceAndLayer = () => {
@@ -1578,6 +1821,32 @@
     });
     prevDay.addEventListener("click", () => shiftTideDate(-1));
     nextDay.addEventListener("click", () => shiftTideDate(1));
+    applyDemButton.addEventListener("click", applyDemSelection);
+    tideLandMaskToggle.addEventListener("change", applyTideLandMaskSelection);
+    demTilesSelect.addEventListener("change", () => {
+      const isCustomDem = demTilesSelect.value === "custom";
+      demTilesCustomInput.hidden = !isCustomDem;
+      if (isCustomDem) {
+        demTilesCustomInput.focus();
+      } else {
+        demMaxZoomInput.value = String(inferDemNativeMaxZoomFromValue(demTilesSelect.value));
+      }
+    });
+    demTilesCustomInput.addEventListener("change", () => {
+      demMaxZoomInput.value = String(inferDemNativeMaxZoomFromValue(demTilesCustomInput.value));
+    });
+    demTilesCustomInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyDemSelection();
+      }
+    });
+    demMaxZoomInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyDemSelection();
+      }
+    });
     datePickerButton.addEventListener("click", () => {
       if (calendarPanel.hidden) {
         openCalendar();
@@ -1627,7 +1896,9 @@
         ],
         bounds: bathymetryBounds,
         minzoom: 11,
-        maxzoom: 18,
+        // Keep the source maxzoom behavior from the working GitHub version.
+        // This is the native request zoom for MapLibre, not a layer visibility cap.
+        maxzoom: demSourceMaxZoom,
         encoding: "terrarium",
         tileSize: 512
       });

@@ -1,6 +1,7 @@
 # Source data and generated map artifacts
 asc/
 *.pmtiles
+!bathymetrie_aquitaine_z15_unmasked.pmtiles
 *.mbtiles
 *.tif
 *.tiff
@@ -20,4 +21,3 @@ __pycache__/
 
 # OS/editor files
 .DS_Store
-
