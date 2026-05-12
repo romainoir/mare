@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MaRe</title>
+  <meta http-equiv="refresh" content="0; url=viewer.html">
+</head>
+<body>
+  <p><a href="viewer.html">Ouvrir MaRe</a></p>
+  <script>
+    const target = new URL("viewer.html", window.location.href);
+    target.search = window.location.search;
+    target.hash = window.location.hash;
+    window.location.replace(target);
+  </script>
+</body>
+</html>
