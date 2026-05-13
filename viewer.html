@@ -112,13 +112,13 @@
     }
 
     .date-calendar {
-      position: absolute;
-      left: 0;
-      bottom: 40px;
-      z-index: 5;
+      position: fixed;
+      left: var(--calendar-left, 12px);
+      bottom: var(--calendar-bottom, 76px);
+      z-index: 7;
       width: min(410px, calc(100vw - 32px));
       box-sizing: border-box;
-      height: min(438px, calc(100vh - 78px));
+      height: min(438px, calc(100dvh - 96px));
       border: 1px solid rgba(15, 23, 42, 0.18);
       border-radius: 6px;
       background: #f8fafc;
@@ -549,12 +549,13 @@
       }
 
       .date-calendar {
-        position: fixed;
+        top: max(74px, calc(env(safe-area-inset-top) + 14px));
         left: 8px;
         right: 8px;
-        bottom: 148px;
+        bottom: auto;
         width: auto;
-        height: min(390px, calc(100dvh - 170px));
+        height: min(430px, calc(100dvh - 104px));
+        border-radius: 8px;
       }
     }
 
@@ -576,8 +577,9 @@
       }
 
       .date-calendar {
-        bottom: 132px;
-        height: min(360px, calc(100dvh - 150px));
+        left: 6px;
+        right: 6px;
+        height: min(408px, calc(100dvh - 96px));
       }
     }
   </style>
@@ -591,14 +593,6 @@
           <button id="datePickerButton" class="date-button" type="button">--</button>
           <button id="nextDay" class="date-step" type="button" aria-label="Jour suivant">›</button>
           <input id="tideDate" class="date-native" type="date" aria-label="Choisir la date">
-          <div id="calendarPanel" class="date-calendar" hidden>
-            <div class="calendar-header">
-              <button id="calendarPrevMonth" class="calendar-nav" type="button" aria-label="Mois précédent">‹</button>
-              <div id="calendarMonth" class="calendar-month">--</div>
-              <button id="calendarNextMonth" class="calendar-nav" type="button" aria-label="Mois suivant">›</button>
-            </div>
-            <div id="calendarGrid" class="calendar-grid"></div>
-          </div>
         </div>
         <span id="maregramCoeff" class="maregram-coeff">Coeff --</span>
       </div>
@@ -610,6 +604,14 @@
       <span id="maregramStatus" class="maregram-status"></span>
     </div>
     <svg id="maregramChart" class="maregram-chart" viewBox="0 0 760 158" role="img" aria-label="Marée"></svg>
+  </div>
+  <div id="calendarPanel" class="date-calendar" hidden>
+    <div class="calendar-header">
+      <button id="calendarPrevMonth" class="calendar-nav" type="button" aria-label="Mois précédent">‹</button>
+      <div id="calendarMonth" class="calendar-month">--</div>
+      <button id="calendarNextMonth" class="calendar-nav" type="button" aria-label="Mois suivant">›</button>
+    </div>
+    <div id="calendarGrid" class="calendar-grid"></div>
   </div>
   <img class="app-logo" src="logo-mare.png" alt="MaRe">
   <div id="debugPanel" class="debug-panel" hidden>
@@ -1576,9 +1578,25 @@
       }
     };
 
+    const positionCalendar = () => {
+      if (window.matchMedia("(max-width: 700px)").matches) {
+        calendarPanel.style.removeProperty("--calendar-left");
+        calendarPanel.style.removeProperty("--calendar-bottom");
+        return;
+      }
+
+      const rect = datePickerButton.getBoundingClientRect();
+      const calendarWidth = Math.min(410, window.innerWidth - 32);
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - calendarWidth - 12));
+      const bottom = Math.max(12, window.innerHeight - rect.top + 8);
+      calendarPanel.style.setProperty("--calendar-left", `${Math.round(left)}px`);
+      calendarPanel.style.setProperty("--calendar-bottom", `${Math.round(bottom)}px`);
+    };
+
     const openCalendar = () => {
       const date = selectedInputDate();
       calendarMonthDate = new Date(date.getFullYear(), date.getMonth(), 1);
+      positionCalendar();
       calendarPanel.hidden = false;
       renderCalendar();
     };
@@ -2100,6 +2118,11 @@
     });
     calendarPrevMonth.addEventListener("click", () => shiftCalendarMonth(-1));
     calendarNextMonth.addEventListener("click", () => shiftCalendarMonth(1));
+    window.addEventListener("resize", () => {
+      if (!calendarPanel.hidden) {
+        positionCalendar();
+      }
+    });
     ignOrthoToggle.addEventListener("change", () => setIgnOrthoVisible(ignOrthoToggle.checked));
     tideOverlayToggle.addEventListener("change", () => setTideOverlayVisible(tideOverlayToggle.checked));
     tideOpacityRange.addEventListener("input", () => setTideOpacity(tideOpacityRange.value));
