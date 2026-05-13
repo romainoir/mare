@@ -1088,21 +1088,6 @@
       return canvas;
     };
 
-    const canvasToPngBuffer = async (canvas) => {
-      if (canvas.convertToBlob) {
-        return (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer();
-      }
-      return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error("Unable to encode masked DEM tile"));
-            return;
-          }
-          blob.arrayBuffer().then(resolve, reject);
-        }, "image/png");
-      });
-    };
-
     const encodeTerrariumColor = (elevation) => {
       const encoded = Math.round((elevation + 32768) * 256);
       return [(encoded >> 16) & 255, (encoded >> 8) & 255, encoded & 255];
@@ -1110,6 +1095,135 @@
 
     const landMaskColor = encodeTerrariumColor(landMaskElevation);
     const noDataOceanColor = encodeTerrariumColor(noDataOceanElevation);
+
+    const makeCrcTable = () => {
+      const table = new Uint32Array(256);
+      for (let n = 0; n < 256; n += 1) {
+        let c = n;
+        for (let k = 0; k < 8; k += 1) {
+          c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+        }
+        table[n] = c >>> 0;
+      }
+      return table;
+    };
+
+    const crcTable = makeCrcTable();
+
+    const crc32 = (type, data) => {
+      let crc = 0xffffffff;
+      for (let index = 0; index < type.length; index += 1) {
+        crc = crcTable[(crc ^ type.charCodeAt(index)) & 255] ^ (crc >>> 8);
+      }
+      for (let index = 0; index < data.length; index += 1) {
+        crc = crcTable[(crc ^ data[index]) & 255] ^ (crc >>> 8);
+      }
+      return (crc ^ 0xffffffff) >>> 0;
+    };
+
+    const adler32 = (data) => {
+      let a = 1;
+      let b = 0;
+      for (let index = 0; index < data.length; index += 1) {
+        a = (a + data[index]) % 65521;
+        b = (b + a) % 65521;
+      }
+      return ((b << 16) | a) >>> 0;
+    };
+
+    const storedDeflate = (data) => {
+      const blocks = Math.ceil(data.length / 65535);
+      const output = new Uint8Array(2 + data.length + blocks * 5 + 4);
+      let offset = 0;
+      output[offset++] = 0x78;
+      output[offset++] = 0x01;
+      for (let inputOffset = 0; inputOffset < data.length;) {
+        const length = Math.min(65535, data.length - inputOffset);
+        const finalBlock = inputOffset + length >= data.length;
+        output[offset++] = finalBlock ? 1 : 0;
+        output[offset++] = length & 255;
+        output[offset++] = (length >> 8) & 255;
+        output[offset++] = (~length) & 255;
+        output[offset++] = ((~length) >> 8) & 255;
+        output.set(data.subarray(inputOffset, inputOffset + length), offset);
+        offset += length;
+        inputOffset += length;
+      }
+      const checksum = adler32(data);
+      output[offset++] = (checksum >>> 24) & 255;
+      output[offset++] = (checksum >>> 16) & 255;
+      output[offset++] = (checksum >>> 8) & 255;
+      output[offset++] = checksum & 255;
+      return output;
+    };
+
+    const writePngChunk = (target, offset, type, data) => {
+      const dataLength = data.length;
+      target[offset++] = (dataLength >>> 24) & 255;
+      target[offset++] = (dataLength >>> 16) & 255;
+      target[offset++] = (dataLength >>> 8) & 255;
+      target[offset++] = dataLength & 255;
+      for (let index = 0; index < type.length; index += 1) {
+        target[offset++] = type.charCodeAt(index);
+      }
+      target.set(data, offset);
+      offset += dataLength;
+      const crc = crc32(type, data);
+      target[offset++] = (crc >>> 24) & 255;
+      target[offset++] = (crc >>> 16) & 255;
+      target[offset++] = (crc >>> 8) & 255;
+      target[offset++] = crc & 255;
+      return offset;
+    };
+
+    const imageDataToRgbPngBuffer = (imageData) => {
+      const { width, height, data } = imageData;
+      const raw = new Uint8Array((width * 3 + 1) * height);
+      let rawOffset = 0;
+      let imageOffset = 0;
+      for (let y = 0; y < height; y += 1) {
+        raw[rawOffset++] = 0;
+        for (let x = 0; x < width; x += 1) {
+          raw[rawOffset++] = data[imageOffset++];
+          raw[rawOffset++] = data[imageOffset++];
+          raw[rawOffset++] = data[imageOffset++];
+          imageOffset += 1;
+        }
+      }
+
+      const ihdr = new Uint8Array(13);
+      ihdr[0] = (width >>> 24) & 255;
+      ihdr[1] = (width >>> 16) & 255;
+      ihdr[2] = (width >>> 8) & 255;
+      ihdr[3] = width & 255;
+      ihdr[4] = (height >>> 24) & 255;
+      ihdr[5] = (height >>> 16) & 255;
+      ihdr[6] = (height >>> 8) & 255;
+      ihdr[7] = height & 255;
+      ihdr[8] = 8;
+      ihdr[9] = 2;
+      ihdr[10] = 0;
+      ihdr[11] = 0;
+      ihdr[12] = 0;
+
+      const idat = storedDeflate(raw);
+      const iend = new Uint8Array();
+      const signature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+      const totalLength = signature.length + 12 + ihdr.length + 12 + idat.length + 12;
+      const png = new Uint8Array(totalLength);
+      let offset = 0;
+      png.set(signature, offset);
+      offset += signature.length;
+      offset = writePngChunk(png, offset, "IHDR", ihdr);
+      offset = writePngChunk(png, offset, "IDAT", idat);
+      writePngChunk(png, offset, "IEND", iend);
+      return png.buffer;
+    };
+
+    const toTransferableBytes = (buffer) => {
+      const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+      return new Uint8Array(bytes.slice(0));
+    };
 
     const noDataOceanTileBuffer = async (z, x, y) => {
       const canvas = createRasterCanvas(demTileSize, demTileSize);
@@ -1134,7 +1248,7 @@
         }
       }
       context.putImageData(imageData, 0, 0);
-      return canvasToPngBuffer(canvas);
+      return imageDataToRgbPngBuffer(imageData);
     };
 
     const loadLandMask = () => {
@@ -1317,49 +1431,58 @@
       }
 
       const { nativeTile, data: sourceBuffer } = tileResult;
-      const bitmap = await createImageBitmap(new Blob([sourceBuffer], { type: "image/png" }));
-      const canvas = createRasterCanvas(demTileSize, demTileSize);
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      context.imageSmoothingEnabled = false;
-      if (nativeTile.crop) {
-        context.drawImage(
-          bitmap,
-          nativeTile.crop.x,
-          nativeTile.crop.y,
-          nativeTile.crop.size,
-          nativeTile.crop.size,
-          0,
-          0,
-          demTileSize,
-          demTileSize
-        );
-      } else {
-        context.drawImage(bitmap, 0, 0, demTileSize, demTileSize);
-      }
-      bitmap.close?.();
-
-      const imageData = context.getImageData(0, 0, demTileSize, demTileSize);
-      const maskData = tideLandMaskEnabled ? (await renderLandMaskImageData(z, x, y, demTileSize)).data : null;
-      const data = imageData.data;
-      for (let index = 0; index < data.length; index += 4) {
-        if (data[index + 3] < 128) {
-          data[index] = noDataOceanColor[0];
-          data[index + 1] = noDataOceanColor[1];
-          data[index + 2] = noDataOceanColor[2];
-          data[index + 3] = 255;
+      let bitmap = null;
+      try {
+        bitmap = await createImageBitmap(new Blob([sourceBuffer], { type: "image/png" }));
+        const canvas = createRasterCanvas(demTileSize, demTileSize);
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        context.imageSmoothingEnabled = false;
+        if (nativeTile.crop) {
+          context.drawImage(
+            bitmap,
+            nativeTile.crop.x,
+            nativeTile.crop.y,
+            nativeTile.crop.size,
+            nativeTile.crop.size,
+            0,
+            0,
+            demTileSize,
+            demTileSize
+          );
+        } else {
+          context.drawImage(bitmap, 0, 0, demTileSize, demTileSize);
         }
-        if (maskData && maskData[index + 3] > 0) {
-          data[index] = landMaskColor[0];
-          data[index + 1] = landMaskColor[1];
-          data[index + 2] = landMaskColor[2];
-          data[index + 3] = 255;
-        }
-      }
-      context.putImageData(imageData, 0, 0);
 
-      const maskedBuffer = await canvasToPngBuffer(canvas);
-      landMaskTileCache.set(cacheKey, maskedBuffer);
-      return { data: new Uint8Array(maskedBuffer.slice(0)) };
+        const imageData = context.getImageData(0, 0, demTileSize, demTileSize);
+        const maskData = tideLandMaskEnabled ? (await renderLandMaskImageData(z, x, y, demTileSize)).data : null;
+        const data = imageData.data;
+        for (let index = 0; index < data.length; index += 4) {
+          if (data[index + 3] < 128) {
+            data[index] = noDataOceanColor[0];
+            data[index + 1] = noDataOceanColor[1];
+            data[index + 2] = noDataOceanColor[2];
+            data[index + 3] = 255;
+          }
+          if (maskData && maskData[index + 3] > 0) {
+            data[index] = landMaskColor[0];
+            data[index + 1] = landMaskColor[1];
+            data[index + 2] = landMaskColor[2];
+            data[index + 3] = 255;
+          }
+        }
+
+        const maskedBuffer = imageDataToRgbPngBuffer(imageData);
+        landMaskTileCache.set(cacheKey, maskedBuffer);
+        return { data: toTransferableBytes(maskedBuffer) };
+      } catch (error) {
+        console.warn("Masked DEM failed, using unmasked tile", error);
+        if (!nativeTile.crop) {
+          return { data: toTransferableBytes(sourceBuffer) };
+        }
+        throw error;
+      } finally {
+        bitmap?.close?.();
+      }
     };
 
     maplibregl.addProtocol("masked-dem", maskedDemProtocol);

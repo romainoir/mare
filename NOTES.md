@@ -175,6 +175,10 @@ worked in the GitHub version.
 When the tide land mask is enabled, GitHub Pages also uses `maskedDemProtocol`.
 The protocol reads directly from the committed PMTiles archive and applies
 `data/re_landmask.geojson` before handing the Terrarium tile to MapLibre.
+The masked tiles are encoded back to explicit RGB PNGs, not canvas-generated
+RGBA PNGs, because the DEM decoder only needs Terrarium RGB values. If the
+runtime masking path fails on a browser, it now fails open and returns the
+unmasked DEM tile instead of making the tide color-relief disappear.
 
 When the tide land mask is disabled with `tideMask=0`, GitHub Pages bypasses
 `maskedDemProtocol` for the committed static PMTiles archive and uses the
