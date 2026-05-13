@@ -914,7 +914,7 @@
     };
 
     const createRasterCanvas = (width, height) => {
-      if (typeof OffscreenCanvas !== "undefined") {
+      if (typeof OffscreenCanvas !== "undefined" && OffscreenCanvas.prototype.convertToBlob) {
         return new OffscreenCanvas(width, height);
       }
       const canvas = document.createElement("canvas");
@@ -1125,14 +1125,14 @@
         };
       }
 
+      const maskedSourceMaxZoom = demSource.type === "pmtiles" ? demNativeMaxZoom : demSourceMaxZoom;
       return {
         ...common,
         tiles: [
           "masked-dem://bathymetrie/{z}/{x}/{y}.png"
         ],
-        // Keep the source maxzoom behavior from the working GitHub version.
-        // This is the native request zoom for MapLibre, not a layer visibility cap.
-        maxzoom: demSourceMaxZoom
+        // Source maxzoom is the native DEM zoom. MapLibre still overzooms this above Z15/Z18.
+        maxzoom: maskedSourceMaxZoom
       };
     };
 
@@ -1141,14 +1141,14 @@
       const cacheKey = `${demSource.type}/${demSource.url}/${demTileVersion}/${demNativeMaxZoom}/${z}/${x}/${y}`;
       const cached = landMaskTileCache.get(cacheKey);
       if (cached) {
-        return { data: cached.slice(0) };
+        return { data: new Uint8Array(cached.slice(0)) };
       }
 
       const tileResult = await fetchDemTileWithParentFallback(z, x, y, abortController);
       if (!tileResult) {
         const emptyTile = await noDataOceanTileBuffer(z, x, y);
         landMaskTileCache.set(cacheKey, emptyTile);
-        return { data: emptyTile.slice(0) };
+        return { data: new Uint8Array(emptyTile.slice(0)) };
       }
 
       const { nativeTile, data: sourceBuffer } = tileResult;
@@ -1194,7 +1194,7 @@
 
       const maskedBuffer = await canvasToPngBuffer(canvas);
       landMaskTileCache.set(cacheKey, maskedBuffer);
-      return { data: maskedBuffer.slice(0) };
+      return { data: new Uint8Array(maskedBuffer.slice(0)) };
     };
 
     maplibregl.addProtocol("masked-dem", maskedDemProtocol);
