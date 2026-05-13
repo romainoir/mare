@@ -676,21 +676,27 @@
       level - 1.2, rgba(139, 200, 190, 0.25, opacity),
       level - 0.55, rgba(163, 211, 204, 0.15, opacity),
       level - 0.18, rgba(188, 224, 219, 0.08, opacity),
-      level + 0.18, rgba(205, 230, 226, 0.025, opacity),
-      level + 0.52, rgba(205, 230, 226, 0, opacity)
+      level - 0.05, rgba(205, 230, 226, 0.04, opacity),
+      level + 0.025, rgba(205, 230, 226, 0, opacity),
+      level + 0.12, rgba(205, 230, 226, 0, opacity)
     ];
 
-    const tideFoamExpression = (level, opacity = tideLayerOpacity) => [
-      "interpolate",
-      ["linear"],
-      ["elevation"],
-      level - 0.050, rgba(255, 255, 255, 0, opacity),
-      level - 0.018, rgba(255, 255, 255, 0, opacity),
-      level - 0.006, rgba(255, 255, 255, 0.34, opacity),
-      level + 0.006, rgba(255, 255, 255, 0.18, opacity),
-      level + 0.018, rgba(255, 255, 255, 0, opacity),
-      level + 0.050, rgba(255, 255, 255, 0, opacity)
-    ];
+    const tideFoamExpression = (level, opacity = tideLayerOpacity) => {
+      const foamOpacity = Math.max(1, opacity);
+      return [
+        "interpolate",
+        ["linear"],
+        ["elevation"],
+        level - 0.080, rgba(255, 255, 255, 0, foamOpacity),
+        level - 0.036, rgba(226, 246, 242, 0.10, foamOpacity),
+        level - 0.016, rgba(247, 255, 253, 0.42, foamOpacity),
+        level - 0.006, rgba(255, 255, 255, 0.92, foamOpacity),
+        level + 0.006, rgba(255, 255, 255, 0.78, foamOpacity),
+        level + 0.016, rgba(247, 255, 253, 0.32, foamOpacity),
+        level + 0.036, rgba(226, 246, 242, 0.08, foamOpacity),
+        level + 0.080, rgba(255, 255, 255, 0, foamOpacity)
+      ];
+    };
 
     const bathymetryBounds = [-1.681015, 46.134064, -1.407020, 46.324219];
     const mapInitialCenter = [-1.51029, 46.22263];
