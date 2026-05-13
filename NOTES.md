@@ -1,13 +1,14 @@
 # Estran maintenance notes
 
-This project renders a tide-aware coastal view with MapLibre, SHOM tide data,
-IGN orthophoto, a local land mask, and a bathymetry DEM encoded as Terrarium
-PMTiles.
+This project renders a tide-aware coastal view with MapLibre, static tide data
+generated from an IFREMER harmonic atlas, IGN orthophoto, a local land mask, and
+a bathymetry DEM encoded as Terrarium PMTiles.
 
 ## Current runtime
 
 - Main app: `viewer.html`
-- SHOM proxy: `shom_proxy.py`, expected on `http://127.0.0.1:8002`
+- Tide data: static JSON in `data/shom/SAINT-MARTIN_DE_RE.json` by default
+- SHOM proxy: `shom_proxy.py`, optional with `?tideSource=proxy`
 - HTML server: usually `python3 -m http.server 8000 --bind 127.0.0.1`
 - PMTiles server: usually `pmtiles serve . --interface=127.0.0.1 --port=8080 --cors=*`
 - Local default DEM in the viewer: `bathymetrie_aquitaine_1m_512_composite.pmtiles`
@@ -18,8 +19,7 @@ PMTiles.
   `viewer.html?dem=bathymetrie_aquitaine_z15_unmasked&demMaxZoom=15`
 - The debug panel exposes the same DEM switcher. It rewrites the URL with
   `dem`, `demMaxZoom`, and a cache-busting `v` parameter.
-- GitHub Pages cannot call the local SHOM proxy or direct SHOM endpoints because
-  of HTTPS/CORS. It reads a single static tide calendar from
+- GitHub Pages and local runs read a single static tide calendar from
   `data/shom/SAINT-MARTIN_DE_RE.json`; the committed cache is intentionally
   limited to `SAINT-MARTIN_DE_RE`.
 
@@ -217,19 +217,46 @@ The Pages build stores tide data as one JSON file per station, currently:
 data/shom/SAINT-MARTIN_DE_RE.json
 ```
 
-The file stores high/low tide events and coefficients, not dense 5-minute water
-level rows. In static mode, `viewer.html` reconstructs the maregram with a cosine
+The preferred static source is now the IFREMER harmonic atlas in `atlas/V1_AQUI`.
+The atlas contains one NetCDF per harmonic constituent. `*-XE-*` files are used
+for sea-surface height; `*-U-*` and `*-V-*` are current components and are not
+used for the maregram.
+
+Generate the cache with:
+
+```bash
+python3 -m venv .venv-tide
+source .venv-tide/bin/activate
+pip install -r requirements-tide.txt
+python3 scripts/generate_atlas_tide_static.py --start 2026-01-01 --end 2026-12-31
+```
+
+The generated file stores dense 5-minute water-level rows in `waterLevels`,
+high/low tide events derived from those rows in `events`, tide ranges in
+`ranges`, and approximate local coefficients derived from those ranges. The
+coefficient is not the official SHOM/Brest coefficient.
+
+The atlas prediction uses the harmonic formula implemented by `uptide`, with
+IFREMER amplitudes and phases in UTC. The atlas does not include an elevation
+`Z0` file, so the script adds a local chart-datum offset:
+
+```text
+chartDatumOffsetMeters = 3.72
+```
+
+This value was calibrated against Saint-Martin-de-Re May 2026 high/low tide
+heights previously cached from SHOM/maree.info-style tables. Changing this value
+moves all water levels up or down without changing tide timing or range.
+
+If `waterLevels` is absent, the viewer falls back to the older cosine
 interpolation between each pair of successive extrema:
 
 ```js
 height = previous.height + (next.height - previous.height) * (1 - cos(pi * t)) / 2
 ```
 
-This keeps the curve smooth with zero slope at each high/low tide and avoids
-shipping large daily water-level arrays. The public SHOM endpoints available
-without a subscription currently reject long future periods, so extending this
-file to 2026-2028 with authoritative predictions requires access to the SHOM
-SPM/SAPM service for those dates.
+The older SHOM generator is kept as a reference, but it is not the current
+preferred way to build the Pages cache.
 
 ## MapLibre
 

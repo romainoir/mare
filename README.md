@@ -1,12 +1,13 @@
 # MaRe
 
-MapLibre viewer for an intertidal coastal map around Ile de Re, with SHOM tide
-data, IGN orthophoto, a local land mask, and a Terrarium bathymetry DEM served
-from PMTiles.
+MapLibre viewer for an intertidal coastal map around Ile de Re, with static tide
+data generated from an IFREMER harmonic atlas, IGN orthophoto, a local land
+mask, and a Terrarium bathymetry DEM served from PMTiles.
 
 ## Run locally
 
-Start the SHOM proxy:
+The viewer uses the committed static tide JSON by default. The old SHOM proxy is
+only needed when explicitly testing live SHOM data with `?tideSource=proxy`:
 
 ```bash
 python3 shom_proxy.py
@@ -67,17 +68,29 @@ data/re_landmask.geojson
 You can test another mask with `?landMask=path/to/mask.geojson`.
 
 On GitHub Pages, the app uses a single static tide calendar at
-`data/shom/SAINT-MARTIN_DE_RE.json` because the SHOM service does not allow
-browser CORS requests from Pages. The committed static cache currently covers
-Saint-Martin-de-Re only. It stores high/low tide events and coefficients; the
-viewer reconstructs the maregram with cosine interpolation between successive
-high and low tides.
+`data/shom/SAINT-MARTIN_DE_RE.json`. The committed static cache currently covers
+Saint-Martin-de-Re for 2026.
+
+The preferred generator uses the IFREMER harmonic atlas in `atlas/V1_AQUI`:
+
+```bash
+python3 -m venv .venv-tide
+source .venv-tide/bin/activate
+pip install -r requirements-tide.txt
+python3 scripts/generate_atlas_tide_static.py --start 2026-01-01 --end 2026-12-31
+```
+
+The generated file stores dense 5-minute water levels in `waterLevels`, high/low
+tide events in `events`, local tide ranges in `ranges`, and an approximate local
+coefficient derived from the range. This coefficient is not the official
+SHOM/Brest coefficient.
 
 ## Data
 
 Large local data and generated artifacts are intentionally not tracked in Git:
 
 - `asc/`
+- `atlas/`
 - `*.pmtiles`, except the small GitHub Pages archive
   `bathymetrie_aquitaine_z15_unmasked.pmtiles`
 - debug exports

@@ -641,7 +641,7 @@
     const pageParams = new URLSearchParams(window.location.search);
     const requestedDemTileBase = pageParams.get("dem");
     const isLocalRuntime = ["", "localhost", "127.0.0.1"].includes(window.location.hostname);
-    const useStaticShom = !isLocalRuntime;
+    const useStaticShom = pageParams.get("tideSource") !== "proxy";
     const shomProxyBase = "http://127.0.0.1:8002";
     const shomStaticCache = new Map();
     const localDemTileBase = "http://127.0.0.1:8080";
@@ -1310,6 +1310,37 @@
       return rows;
     };
 
+    const staticWaterLevelsForDate = (calendar, dateString) => {
+      const rows = calendar.waterLevels?.[dateString];
+      if (!Array.isArray(rows) || !rows.length) {
+        throw new Error("no static water levels for date");
+      }
+      const normalizeClockTime = (value) => {
+        const parts = String(value).split(":");
+        if (parts.length < 2) {
+          return "00:00:00";
+        }
+        return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}:${(parts[2] ?? "00").padStart(2, "0")}`;
+      };
+      const points = rows
+        .map((row) => {
+          const time = Array.isArray(row) ? row[0] : row.time;
+          const height = Array.isArray(row) ? row[1] : row.height;
+          const timestamp = String(time).includes("T")
+            ? new Date(time)
+            : new Date(`${dateString}T${normalizeClockTime(time)}`);
+          return {
+            time: timestamp,
+            height: Number(height)
+          };
+        })
+        .filter((point) => Number.isFinite(point.height) && !Number.isNaN(point.time.getTime()));
+      if (!points.length) {
+        throw new Error("empty static water levels for date");
+      }
+      return points;
+    };
+
     const fetchMonthlyCoefficients = async (year, month) => {
       const cacheKey = monthCacheKey(year, month);
       if (monthCoefficientCache.has(cacheKey)) {
@@ -1691,6 +1722,9 @@
     const fetchTideData = async () => {
       if (useStaticShom) {
         const calendar = await fetchStaticTideCalendar(tideStation.value);
+        if (calendar.waterLevels?.[tideDate.value]) {
+          return staticWaterLevelsForDate(calendar, tideDate.value);
+        }
         const events = staticTideEventsAroundDate(calendar, tideDate.value);
         return interpolateTideBetweenExtrema(tideDate.value, events);
       }
@@ -1716,7 +1750,14 @@
       let payload;
       if (useStaticShom) {
         payload = await fetchStaticTideCalendar(tideStation.value);
-        return tideEventsFromRows(tideDate.value, payload.events?.[tideDate.value] ?? []);
+        const events = tideEventsFromRows(tideDate.value, payload.events?.[tideDate.value] ?? []);
+        if (events.length) {
+          return events;
+        }
+        if (payload.waterLevels?.[tideDate.value]) {
+          return extractTideEvents(staticWaterLevelsForDate(payload, tideDate.value));
+        }
+        return events;
       } else {
         const url = new URL(`${shomProxyBase}/shom/hlt`);
         url.search = new URLSearchParams({
@@ -1832,7 +1873,7 @@
     };
 
     const loadMaregram = async () => {
-      setMaregramStatus("Chargement SHOM");
+      setMaregramStatus("Chargement marée");
       maregramCoeff.textContent = "Coeff --";
       const [tideResult, coefficientResult, tideEventsResult] = await Promise.allSettled([
         fetchTideData(),
@@ -1848,7 +1889,7 @@
         setMaregramStatus("");
         renderMaregram(tideResult.value, tideEventsResult.status === "fulfilled" ? tideEventsResult.value : null);
       } else {
-        setMaregramStatus(`SHOM indisponible, courbe demo (${tideResult.reason.message})`);
+        setMaregramStatus(`Marée indisponible, courbe demo (${tideResult.reason.message})`);
         renderMaregram(generateDemoTide(tideDate.value));
       }
     };
