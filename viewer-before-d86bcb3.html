@@ -1,0 +1,2304 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>MaRe</title>
+  <link rel="icon" type="image/png" sizes="180x180" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link href="https://unpkg.com/maplibre-gl@6.0.0-8/dist/maplibre-gl.css" rel="stylesheet">
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      height: 100lvh;
+      margin: 0;
+      overflow: hidden;
+      background: #082f3c;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      height: 100lvh;
+      margin: 0;
+    }
+
+    .maplibregl-ctrl-bottom-left,
+    .maplibregl-ctrl-bottom-right {
+      display: none;
+    }
+
+    .maplibregl-ctrl-top-right {
+      top: calc(env(safe-area-inset-top) + 10px);
+      right: calc(env(safe-area-inset-right) + 10px);
+    }
+
+    .maregram-panel {
+      position: absolute;
+      left: 50%;
+      bottom: calc(env(safe-area-inset-bottom) + 18px);
+      transform: translateX(-50%);
+      z-index: 1;
+      display: grid;
+      gap: 8px;
+      width: min(820px, calc(100% - 24px));
+      max-width: 820px;
+      padding: 10px 12px 12px;
+      border: 1px solid rgba(30, 41, 59, 0.18);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.93);
+      color: #1f2937;
+      font: 13px/1.25 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.14);
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .maregram-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .maregram-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-right: auto;
+      width: 100%;
+    }
+
+    .date-control {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-right: auto;
+    }
+
+    .date-step,
+    .date-button {
+      appearance: none;
+      min-height: 32px;
+      border: 1px solid rgba(51, 65, 85, 0.28);
+      border-radius: 5px;
+      background: #ffffff;
+      color: #1f2937;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .date-step {
+      width: 32px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .date-button {
+      min-width: 170px;
+      padding: 0 10px;
+      font-weight: 700;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .date-step:hover,
+    .date-step:focus-visible,
+    .date-button:hover,
+    .date-button:focus-visible {
+      border-color: rgba(37, 99, 235, 0.62);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    }
+
+    .date-native {
+      position: absolute;
+      left: 42px;
+      bottom: -2px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .date-calendar {
+      position: fixed;
+      left: var(--calendar-left, 12px);
+      bottom: var(--calendar-bottom, 76px);
+      z-index: 7;
+      width: min(410px, calc(100vw - 32px));
+      box-sizing: border-box;
+      height: min(438px, calc(100dvh - 96px));
+      border: 1px solid rgba(15, 23, 42, 0.18);
+      border-radius: 6px;
+      background: #f8fafc;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+      overflow: hidden;
+      color: #1f2937;
+    }
+
+    .date-calendar[hidden] {
+      display: none;
+    }
+
+    .calendar-header {
+      display: grid;
+      grid-template-columns: 34px 1fr 34px;
+      align-items: center;
+      height: 37px;
+      background: #0f3b70;
+      color: #ffffff;
+    }
+
+    .calendar-month {
+      padding: 9px 8px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: capitalize;
+    }
+
+    .calendar-nav {
+      appearance: none;
+      height: 100%;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: 20px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      cursor: pointer;
+    }
+
+    .calendar-nav:hover,
+    .calendar-nav:focus-visible {
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      height: calc(100% - 37px);
+      background: rgba(148, 163, 184, 0.35);
+    }
+
+    .calendar-column {
+      display: grid;
+      grid-template-rows: repeat(12, 1fr);
+      background: #ffffff;
+    }
+
+    .calendar-column-head,
+    .calendar-day {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: start;
+      min-height: 0;
+      padding: 3px 9px;
+      border: 0;
+      color: #1f2937;
+      font: 12px/1.05 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    .calendar-column-head {
+      background: #f8fafc;
+      font-weight: 800;
+    }
+
+    .calendar-day {
+      appearance: none;
+      width: 100%;
+      cursor: pointer;
+      text-align: left;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .calendar-day:hover,
+    .calendar-day:focus-visible,
+    .calendar-day-selected {
+      outline: 2px solid rgba(37, 99, 235, 0.72);
+      outline-offset: -2px;
+    }
+
+    .calendar-day-name {
+      white-space: nowrap;
+    }
+
+    .calendar-day-coeff {
+      text-align: right;
+      line-height: 1.05;
+      white-space: pre-line;
+    }
+
+    .calendar-loading {
+      grid-column: 1 / -1;
+      box-sizing: border-box;
+      min-height: 100%;
+      padding: 18px;
+      background: #ffffff;
+      color: #475569;
+      text-align: center;
+    }
+
+    .maregram-coeff {
+      color: #1d4ed8;
+      font-size: 18px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tide-events {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .tide-event {
+      appearance: none;
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+      padding: 7px 8px;
+      border: 1px solid rgba(37, 99, 235, 0.18);
+      border-radius: 6px;
+      background: rgba(239, 246, 255, 0.78);
+      color: #1f2937;
+      cursor: pointer;
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+      text-align: left;
+    }
+
+    .tide-event:hover,
+    .tide-event:focus-visible,
+    .tide-event-active {
+      border-color: rgba(37, 99, 235, 0.62);
+      background: rgba(219, 234, 254, 0.96);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+    }
+
+    .tide-event-type {
+      color: #475569;
+      font-size: 11px;
+      font-weight: 650;
+      text-transform: uppercase;
+    }
+
+    .tide-event-time {
+      color: #0f172a;
+      font-size: 17px;
+      font-weight: 750;
+    }
+
+    .tide-event-height {
+      color: #334155;
+      font-size: 12px;
+    }
+
+    .maregram-readout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: #334155;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .maregram-chart {
+      width: 100%;
+      height: 158px;
+      touch-action: none;
+    }
+
+    .maregram-grid {
+      stroke: rgba(100, 116, 139, 0.34);
+      stroke-width: 1;
+    }
+
+    .maregram-axis {
+      stroke: rgba(15, 23, 42, 0.62);
+      stroke-width: 1.2;
+    }
+
+    .maregram-path {
+      fill: none;
+      stroke: #1d4ed8;
+      stroke-width: 2.4;
+    }
+
+    .maregram-water {
+      fill: rgba(37, 99, 235, 0.12);
+    }
+
+    .maregram-cursor {
+      stroke: #2563eb;
+      stroke-width: 2;
+    }
+
+    .maregram-point {
+      fill: #ffffff;
+      stroke: #2563eb;
+      stroke-width: 2;
+    }
+
+    .maregram-status {
+      color: #64748b;
+    }
+
+    .maregram-status:empty {
+      display: none;
+    }
+
+    .app-logo {
+      position: absolute;
+      top: calc(env(safe-area-inset-top) + 12px);
+      left: calc(env(safe-area-inset-left) + 12px);
+      z-index: 2;
+      width: 220px;
+      height: auto;
+      max-height: 120px;
+      object-fit: contain;
+      -webkit-user-select: none;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .debug-panel {
+      position: absolute;
+      top: 154px;
+      right: 12px;
+      z-index: 2;
+      display: grid;
+      gap: 9px;
+      width: 230px;
+      padding: 10px;
+      border: 1px solid rgba(30, 41, 59, 0.2);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.92);
+      color: #1f2937;
+      font: 13px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.14);
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .debug-panel[hidden] {
+      display: none;
+    }
+
+    .debug-field {
+      display: grid;
+      gap: 5px;
+      color: #334155;
+      font-size: 12px;
+    }
+
+    .debug-field input,
+    .debug-field select {
+      min-height: 30px;
+      min-width: 0;
+      border: 1px solid rgba(51, 65, 85, 0.28);
+      border-radius: 5px;
+      background: #ffffff;
+      color: #1f2937;
+      font: 13px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .debug-apply-button {
+      appearance: none;
+      min-height: 31px;
+      border: 1px solid rgba(37, 99, 235, 0.42);
+      border-radius: 5px;
+      background: #2563eb;
+      color: #ffffff;
+      font: 700 12px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      cursor: pointer;
+    }
+
+    .debug-apply-button:hover,
+    .debug-apply-button:focus-visible {
+      background: #1d4ed8;
+      outline: none;
+    }
+
+    .ortho-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      cursor: pointer;
+    }
+
+    .ortho-toggle input {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: #2563eb;
+    }
+
+    .debug-range-control {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 5px 8px;
+      align-items: center;
+      min-width: 190px;
+      color: #334155;
+      font-size: 12px;
+    }
+
+    .debug-range-control input {
+      grid-column: 1 / -1;
+      width: 100%;
+      margin: 0;
+      accent-color: #2563eb;
+    }
+
+    .debug-range-value {
+      color: #1f2937;
+      font-variant-numeric: tabular-nums;
+      font-weight: 650;
+    }
+
+    .debug-control-button svg {
+      display: block;
+      width: 18px;
+      height: 18px;
+      margin: auto;
+    }
+
+    @media (max-width: 700px) {
+      .app-logo {
+        top: calc(env(safe-area-inset-top) + 8px);
+        left: calc(env(safe-area-inset-left) + 8px);
+        width: clamp(78px, 22vw, 116px);
+        max-height: 70px;
+      }
+
+      .maregram-panel {
+        bottom: 8px;
+        gap: 6px;
+        width: calc(100% - 16px);
+        max-height: min(48vh, 290px);
+        box-sizing: border-box;
+        padding: 8px;
+        overflow: auto;
+        font-size: 12px;
+        overscroll-behavior: contain;
+      }
+
+      .tide-events {
+        grid-template-columns: repeat(4, minmax(92px, 1fr));
+        gap: 5px;
+        overflow-x: auto;
+        padding-bottom: 1px;
+        scrollbar-width: thin;
+      }
+
+      .tide-event {
+        padding: 5px 6px;
+        border-radius: 5px;
+      }
+
+      .tide-event-type {
+        font-size: 9px;
+      }
+
+      .tide-event-time {
+        font-size: 14px;
+      }
+
+      .tide-event-height {
+        font-size: 11px;
+      }
+
+      .maregram-header {
+        align-items: stretch;
+      }
+
+      .maregram-heading,
+      .date-control,
+      .date-button {
+        width: 100%;
+      }
+
+      .date-control {
+        display: grid;
+        grid-template-columns: 32px 1fr 32px;
+      }
+
+      .date-step,
+      .date-button {
+        min-height: 30px;
+      }
+
+      .date-button {
+        min-width: 0;
+        padding: 0 8px;
+      }
+
+      .maregram-coeff {
+        margin-left: auto;
+        font-size: 17px;
+      }
+
+      .maregram-readout {
+        gap: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .maregram-status {
+        display: none;
+      }
+
+      .maregram-chart {
+        height: 92px;
+      }
+
+      .date-calendar {
+        top: auto;
+        left: 50%;
+        right: auto;
+        bottom: var(--calendar-mobile-bottom, 292px);
+        width: min(350px, calc(100vw - 42px));
+        height: var(--calendar-mobile-height, min(324px, calc(100dvh - 220px)));
+        border-radius: 8px;
+        transform: translateX(-50%);
+      }
+
+      .calendar-header {
+        grid-template-columns: 32px 1fr 32px;
+        height: 32px;
+      }
+
+      .calendar-month {
+        padding: 7px 6px;
+        font-size: 14px;
+      }
+
+      .calendar-nav {
+        font-size: 18px;
+      }
+
+      .calendar-grid {
+        height: calc(100% - 32px);
+      }
+
+      .calendar-column-head,
+      .calendar-day {
+        gap: 4px;
+        padding: 2px 6px;
+        font-size: 10px;
+        line-height: 1;
+      }
+
+      .calendar-day:hover,
+      .calendar-day:focus-visible,
+      .calendar-day-selected {
+        outline-width: 1.5px;
+      }
+    }
+
+    @media (max-width: 430px) {
+      .maregram-panel {
+        max-height: min(46vh, 255px);
+      }
+
+      .maregram-chart {
+        height: 78px;
+      }
+
+      .tide-events {
+        grid-template-columns: repeat(4, minmax(82px, 1fr));
+      }
+
+      .tide-event {
+        padding: 4px 5px;
+      }
+
+      .date-calendar {
+        width: min(336px, calc(100vw - 44px));
+        height: var(--calendar-mobile-height, min(314px, calc(100dvh - 218px)));
+      }
+
+      .calendar-column-head,
+      .calendar-day {
+        padding-inline: 5px;
+        font-size: 9.5px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="maregram-panel">
+    <div class="maregram-header">
+      <div class="maregram-heading">
+        <div class="date-control">
+          <button id="prevDay" class="date-step" type="button" aria-label="Jour précédent">‹</button>
+          <button id="datePickerButton" class="date-button" type="button">--</button>
+          <button id="nextDay" class="date-step" type="button" aria-label="Jour suivant">›</button>
+          <input id="tideDate" class="date-native" type="date" aria-label="Choisir la date">
+        </div>
+        <span id="maregramCoeff" class="maregram-coeff">Coeff --</span>
+      </div>
+    </div>
+    <div id="tideEvents" class="tide-events"></div>
+    <div class="maregram-readout">
+      <span id="maregramTime">--:--</span>
+      <span id="maregramHeight">Marée -- m</span>
+      <span id="maregramStatus" class="maregram-status"></span>
+    </div>
+    <svg id="maregramChart" class="maregram-chart" viewBox="0 0 760 158" role="img" aria-label="Marée"></svg>
+  </div>
+  <div id="calendarPanel" class="date-calendar" hidden>
+    <div class="calendar-header">
+      <button id="calendarPrevMonth" class="calendar-nav" type="button" aria-label="Mois précédent">‹</button>
+      <div id="calendarMonth" class="calendar-month">--</div>
+      <button id="calendarNextMonth" class="calendar-nav" type="button" aria-label="Mois suivant">›</button>
+    </div>
+    <div id="calendarGrid" class="calendar-grid"></div>
+  </div>
+  <img class="app-logo" src="logo-mare.png" alt="MaRe">
+  <div id="debugPanel" class="debug-panel" hidden>
+    <label class="debug-field">
+      <span>Port</span>
+      <select id="tideStation"></select>
+    </label>
+    <label class="debug-field">
+      <span>PMTiles</span>
+      <select id="demTilesSelect">
+        <option value="bathymetrie_aquitaine_1m_512_composite">composite z18</option>
+        <option value="bathymetrie_aquitaine_z15_unmasked">z15 GitHub</option>
+        <option value="custom">autre...</option>
+      </select>
+      <input id="demTilesCustomInput" type="text" spellcheck="false" autocomplete="off" placeholder="nom ou URL PMTiles">
+    </label>
+    <label class="debug-field">
+      <span>Zoom max natif</span>
+      <input id="demMaxZoomInput" type="number" min="0" max="22" step="1">
+    </label>
+    <button id="applyDemButton" class="debug-apply-button" type="button">Charger PMTiles</button>
+    <label class="ortho-toggle">
+      <input id="ignOrthoToggle" type="checkbox" checked>
+      <span>IGN</span>
+    </label>
+    <label class="ortho-toggle">
+      <input id="tideOverlayToggle" type="checkbox" checked>
+      <span>Eau</span>
+    </label>
+    <label class="ortho-toggle">
+      <input id="tideLandMaskToggle" type="checkbox" checked>
+      <span>Masque terre marée</span>
+    </label>
+    <label class="debug-range-control">
+      <span>Opacité eau</span>
+      <span id="tideOpacityValue" class="debug-range-value">220%</span>
+      <input id="tideOpacityRange" type="range" min="20" max="220" step="5" value="220">
+    </label>
+  </div>
+  <div id="map"></div>
+  <script type="module">
+    import * as maplibregl from "https://unpkg.com/maplibre-gl@6.0.0-8/dist/maplibre-gl.mjs";
+    import { PMTiles, Protocol } from "https://unpkg.com/pmtiles@3.2.1/dist/index.js";
+
+    maplibregl.setWorkerUrl(new URL("vendor/maplibre-gl-worker-6.0.0-8.mjs", window.location.href).href);
+    maplibregl.addProtocol("pmtiles", new Protocol().tile);
+
+    const scaledAlpha = (value, multiplier) =>
+      Math.max(0, Math.min(1, value * multiplier)).toFixed(3);
+
+    const rgba = (red, green, blue, alpha, multiplier = tideLayerOpacity) =>
+      `rgba(${red}, ${green}, ${blue}, ${scaledAlpha(alpha, multiplier)})`;
+
+    const tideColorExpression = (level, opacity = tideLayerOpacity) => [
+      "interpolate",
+      ["linear"],
+      ["elevation"],
+      level - 20, rgba(38, 91, 111, 0.70, opacity),
+      level - 12, rgba(35, 105, 130, 0.70, opacity),
+      level - 8, rgba(42, 124, 149, 0.67, opacity),
+      level - 5, rgba(58, 146, 161, 0.60, opacity),
+      level - 3, rgba(82, 166, 171, 0.48, opacity),
+      level - 2, rgba(112, 186, 181, 0.35, opacity),
+      level - 1.2, rgba(139, 200, 190, 0.25, opacity),
+      level - 0.55, rgba(163, 211, 204, 0.15, opacity),
+      level - 0.18, rgba(188, 224, 219, 0.08, opacity),
+      level - 0.05, rgba(205, 230, 226, 0.04, opacity),
+      level + 0.025, rgba(205, 230, 226, 0, opacity),
+      level + 0.12, rgba(205, 230, 226, 0, opacity)
+    ];
+
+    const tideFoamExpression = (level, opacity = tideLayerOpacity) => {
+      const foamOpacity = Math.max(1, opacity);
+      return [
+        "interpolate",
+        ["linear"],
+        ["elevation"],
+        level - 0.080, rgba(255, 255, 255, 0, foamOpacity),
+        level - 0.036, rgba(226, 246, 242, 0.10, foamOpacity),
+        level - 0.016, rgba(247, 255, 253, 0.42, foamOpacity),
+        level - 0.006, rgba(255, 255, 255, 0.92, foamOpacity),
+        level + 0.006, rgba(255, 255, 255, 0.78, foamOpacity),
+        level + 0.016, rgba(247, 255, 253, 0.32, foamOpacity),
+        level + 0.036, rgba(226, 246, 242, 0.08, foamOpacity),
+        level + 0.080, rgba(255, 255, 255, 0, foamOpacity)
+      ];
+    };
+
+    const bathymetryBounds = [-1.681015, 46.134064, -1.407020, 46.324219];
+    const mapInitialCenter = [-1.51029, 46.22263];
+    const mapMinZoom = 12.62;
+    const mapMaxBounds = [
+      [bathymetryBounds[0], bathymetryBounds[1]],
+      [bathymetryBounds[2], bathymetryBounds[3]]
+    ];
+
+    const tideStation = document.getElementById("tideStation");
+    const tideDate = document.getElementById("tideDate");
+    const prevDay = document.getElementById("prevDay");
+    const nextDay = document.getElementById("nextDay");
+    const datePickerButton = document.getElementById("datePickerButton");
+    const calendarPanel = document.getElementById("calendarPanel");
+    const maregramPanel = document.querySelector(".maregram-panel");
+    const calendarPrevMonth = document.getElementById("calendarPrevMonth");
+    const calendarNextMonth = document.getElementById("calendarNextMonth");
+    const calendarMonth = document.getElementById("calendarMonth");
+    const calendarGrid = document.getElementById("calendarGrid");
+    const tideEvents = document.getElementById("tideEvents");
+    const maregramChart = document.getElementById("maregramChart");
+    const maregramStatus = document.getElementById("maregramStatus");
+    const maregramTime = document.getElementById("maregramTime");
+    const maregramHeight = document.getElementById("maregramHeight");
+    const maregramCoeff = document.getElementById("maregramCoeff");
+    const debugPanel = document.getElementById("debugPanel");
+    const demTilesSelect = document.getElementById("demTilesSelect");
+    const demTilesCustomInput = document.getElementById("demTilesCustomInput");
+    const demMaxZoomInput = document.getElementById("demMaxZoomInput");
+    const applyDemButton = document.getElementById("applyDemButton");
+    const ignOrthoToggle = document.getElementById("ignOrthoToggle");
+    const tideOverlayToggle = document.getElementById("tideOverlayToggle");
+    const tideLandMaskToggle = document.getElementById("tideLandMaskToggle");
+    const tideOpacityRange = document.getElementById("tideOpacityRange");
+    const tideOpacityValue = document.getElementById("tideOpacityValue");
+    const svgNS = "http://www.w3.org/2000/svg";
+    const chart = {
+      width: 760,
+      height: 158,
+      margin: { top: 14, right: 16, bottom: 28, left: 42 },
+      data: [],
+      active: null,
+      cursorLine: null,
+      cursorPoint: null
+    };
+    const pageParams = new URLSearchParams(window.location.search);
+    const requestedDemTileBase = pageParams.get("dem");
+    const isLocalRuntime = ["", "localhost", "127.0.0.1"].includes(window.location.hostname);
+    const useStaticShom = pageParams.get("tideSource") !== "proxy";
+    const shomProxyBase = "http://127.0.0.1:8002";
+    const shomStaticCache = new Map();
+    const localDemTileBase = "http://127.0.0.1:8080";
+    const localDefaultDemName = "bathymetrie_aquitaine_1m_512_composite";
+    const pagesDefaultDemName = "bathymetrie_aquitaine_z15_unmasked";
+    const defaultDemName = isLocalRuntime ? localDefaultDemName : pagesDefaultDemName;
+    const isHttpUrl = (value) => /^https?:\/\//i.test(value);
+    const isPmtilesArchive = (value) => /\.pmtiles(?:$|[?#])/i.test(value);
+    const normalizeDemSelection = (value) => {
+      const cleanValue = value.trim();
+      if (!cleanValue) {
+        return "";
+      }
+      if (isHttpUrl(cleanValue)) {
+        return cleanValue.replace(/\/$/, "");
+      }
+      return cleanValue.replace(/\.pmtiles$/i, "");
+    };
+    const resolveDemSource = (value) => {
+      const rawValue = (value || defaultDemName).trim();
+      const cleanValue = normalizeDemSelection(rawValue);
+      const archiveRequested = isPmtilesArchive(rawValue);
+
+      if (isHttpUrl(cleanValue)) {
+        return {
+          type: isPmtilesArchive(cleanValue) ? "pmtiles" : "tile-endpoint",
+          url: cleanValue.replace(/\/$/, "")
+        };
+      }
+
+      const basename = cleanValue.replace(/\.pmtiles$/i, "");
+      if (isLocalRuntime && !archiveRequested) {
+        return {
+          type: "tile-endpoint",
+          url: `${localDemTileBase}/${basename}`
+        };
+      }
+
+      return {
+        type: "pmtiles",
+        url: new URL(`${basename}.pmtiles`, window.location.href).href
+      };
+    };
+    const demSelection = normalizeDemSelection(requestedDemTileBase || defaultDemName);
+    const demSource = resolveDemSource(requestedDemTileBase || defaultDemName);
+    const demTileVersion = pageParams.get("demVersion") ?? demSelection;
+    const demNativeMinZoom = 11;
+    const demSourceMaxZoom = Number(pageParams.get("demSourceMaxZoom")) || 18;
+    const knownDemNames = [
+      localDefaultDemName,
+      pagesDefaultDemName
+    ];
+    const inferDemNativeMaxZoomFromValue = (value) => {
+      const match = value.match(/(?:^|[_-])z(\d{1,2})(?:[_-]|$)/i);
+      return match ? Number(match[1]) : 18;
+    };
+    const inferDemNativeMaxZoom = () => {
+      const explicitZoom = Number(pageParams.get("demMaxZoom") ?? pageParams.get("demNativeMaxZoom"));
+      if (Number.isInteger(explicitZoom) && explicitZoom >= 0) {
+        return explicitZoom;
+      }
+      return inferDemNativeMaxZoomFromValue(demSelection);
+    };
+    const demNativeMaxZoom = inferDemNativeMaxZoom();
+    const demDebug = pageParams.has("demDebug");
+    const tideLandMaskEnabled = pageParams.get("tideMask") !== "0";
+    const landMaskUrl = pageParams.get("landMask") || "data/re_landmask.geojson";
+    const useDirectPmtilesDem = demSource.type === "pmtiles" && useStaticShom && !tideLandMaskEnabled;
+    const demTileSize = 512;
+    const initialDemSelection = demSelection;
+    if (knownDemNames.includes(initialDemSelection)) {
+      demTilesSelect.value = initialDemSelection;
+      demTilesCustomInput.value = "";
+      demTilesCustomInput.hidden = true;
+    } else {
+      demTilesSelect.value = "custom";
+      demTilesCustomInput.value = initialDemSelection;
+      demTilesCustomInput.hidden = false;
+    }
+    demMaxZoomInput.value = String(demNativeMaxZoom);
+    tideLandMaskToggle.checked = tideLandMaskEnabled;
+    const namedPlaces = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {
+            name: "Le trou de la dame"
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [-1.5109661, 46.1901220]
+          }
+        }
+      ]
+    };
+    const landMaskElevation = 12000;
+    const noDataOceanElevation = -20;
+    const landMaskTileCache = new Map();
+    const monthCoefficientCache = new Map();
+    const defaultZhToDemOffset = -3.504;
+    const zhToDemOffsetByHarbor = {
+      "LA_ROCHELLE-PALLICE": -3.504,
+      "SAINT-MARTIN_DE_RE": -3.504
+    };
+    let harbors = [];
+    let landMaskPromise = null;
+    let stationManuallySelected = false;
+    let calendarMonthDate = null;
+    let calendarRenderToken = 0;
+    let currentTideDemLevel = 0;
+    let currentTideHeight = 0;
+    let tideLayerOpacity = Number(tideOpacityRange.value) / 100;
+
+    const fallbackStations = [
+      { cst: "SAINT-MARTIN_DE_RE", toponyme: "Saint-Martin-de-Re (Ile de Re)", lat: 46.208, lon: -1.3655, ut: 10 }
+    ];
+
+    const todayString = () => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    };
+
+    const dateLabelFormatter = new Intl.DateTimeFormat("fr-FR", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    });
+    const calendarMonthFormatter = new Intl.DateTimeFormat("fr-FR", {
+      month: "long",
+      year: "numeric"
+    });
+    const calendarWeekdayFormatter = new Intl.DateTimeFormat("fr-FR", {
+      weekday: "short"
+    });
+
+    const dateFromInput = (value) => {
+      const [year, month, day] = value.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    };
+
+    const inputDateString = (date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+    const updateDateButton = () => {
+      if (!tideDate.value) {
+        datePickerButton.textContent = "--";
+        return;
+      }
+      datePickerButton.textContent = dateLabelFormatter.format(dateFromInput(tideDate.value));
+    };
+
+    const shiftTideDate = (days) => {
+      const date = dateFromInput(tideDate.value || todayString());
+      date.setDate(date.getDate() + days);
+      tideDate.value = inputDateString(date);
+      updateDateButton();
+      if (!calendarPanel.hidden) {
+        calendarMonthDate = new Date(date.getFullYear(), date.getMonth(), 1);
+        renderCalendar();
+      }
+      loadMaregram();
+    };
+
+    const svgNode = (name, attributes = {}) => {
+      const node = document.createElementNS(svgNS, name);
+      for (const [key, value] of Object.entries(attributes)) {
+        node.setAttribute(key, value);
+      }
+      return node;
+    };
+
+    const createRasterCanvas = (width, height) => {
+      if (typeof OffscreenCanvas !== "undefined" && OffscreenCanvas.prototype.convertToBlob) {
+        return new OffscreenCanvas(width, height);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      return canvas;
+    };
+
+    const canvasToPngBuffer = async (canvas) => {
+      if (canvas.convertToBlob) {
+        return (await canvas.convertToBlob({ type: "image/png" })).arrayBuffer();
+      }
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("Unable to encode masked DEM tile"));
+            return;
+          }
+          blob.arrayBuffer().then(resolve, reject);
+        }, "image/png");
+      });
+    };
+
+    const encodeTerrariumColor = (elevation) => {
+      const encoded = Math.round((elevation + 32768) * 256);
+      return [(encoded >> 16) & 255, (encoded >> 8) & 255, encoded & 255];
+    };
+
+    const landMaskColor = encodeTerrariumColor(landMaskElevation);
+    const noDataOceanColor = encodeTerrariumColor(noDataOceanElevation);
+
+    const noDataOceanTileBuffer = async (z, x, y) => {
+      const canvas = createRasterCanvas(demTileSize, demTileSize);
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      const imageData = context.createImageData(demTileSize, demTileSize);
+      const data = imageData.data;
+      for (let index = 0; index < data.length; index += 4) {
+        data[index] = noDataOceanColor[0];
+        data[index + 1] = noDataOceanColor[1];
+        data[index + 2] = noDataOceanColor[2];
+        data[index + 3] = 255;
+      }
+
+      if (tideLandMaskEnabled) {
+        const maskData = (await renderLandMaskImageData(z, x, y, demTileSize)).data;
+        for (let index = 0; index < data.length; index += 4) {
+          if (maskData[index + 3] > 0) {
+            data[index] = landMaskColor[0];
+            data[index + 1] = landMaskColor[1];
+            data[index + 2] = landMaskColor[2];
+          }
+        }
+      }
+      context.putImageData(imageData, 0, 0);
+      return canvasToPngBuffer(canvas);
+    };
+
+    const loadLandMask = () => {
+      landMaskPromise ??= fetch(landMaskUrl)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Land mask HTTP ${response.status}`);
+          }
+          return response.json();
+        });
+      return landMaskPromise;
+    };
+
+    const lonLatToTilePixel = ([lon, lat], z, x, y, size) => {
+      const scale = 2 ** z;
+      const sinLat = Math.sin((lat * Math.PI) / 180);
+      const worldX = ((lon + 180) / 360) * scale;
+      const worldY = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
+      return [(worldX - x) * size, (worldY - y) * size];
+    };
+
+    const drawPolygonMask = (context, coordinates, z, x, y, size) => {
+      context.beginPath();
+      for (const ring of coordinates) {
+        ring.forEach((coordinate, index) => {
+          const [px, py] = lonLatToTilePixel(coordinate, z, x, y, size);
+          if (index === 0) {
+            context.moveTo(px, py);
+          } else {
+            context.lineTo(px, py);
+          }
+        });
+        context.closePath();
+      }
+      context.fill("evenodd");
+    };
+
+    const renderLandMaskImageData = async (z, x, y, size) => {
+      const landMask = await loadLandMask();
+      const canvas = createRasterCanvas(size, size);
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.fillStyle = "#000";
+      for (const feature of landMask.features ?? []) {
+        const { type, coordinates } = feature.geometry ?? {};
+        if (type === "Polygon") {
+          drawPolygonMask(context, coordinates, z, x, y, size);
+        } else if (type === "MultiPolygon") {
+          for (const polygon of coordinates) {
+            drawPolygonMask(context, polygon, z, x, y, size);
+          }
+        }
+      }
+
+      return context.getImageData(0, 0, size, size);
+    };
+
+    const parseMaskedDemUrl = (url) => {
+      const match = url.match(/^masked-dem:\/\/[^/]+\/(\d+)\/(\d+)\/(\d+)(?:\.png)?(?:\?.*)?$/);
+      if (!match) {
+        throw new Error(`Invalid masked DEM URL: ${url}`);
+      }
+      return {
+        z: Number(match[1]),
+        x: Number(match[2]),
+        y: Number(match[3])
+      };
+    };
+
+    const nativeDemTileForRequest = (z, x, y, nativeMaxZoom = demNativeMaxZoom) => {
+      if (z <= nativeMaxZoom) {
+        return { z, x, y, crop: null, overzoomDelta: 0 };
+      }
+      const zoomDelta = z - nativeMaxZoom;
+      const scale = 2 ** zoomDelta;
+      const cropSize = demTileSize / scale;
+      return {
+        z: nativeMaxZoom,
+        x: Math.floor(x / scale),
+        y: Math.floor(y / scale),
+        overzoomDelta: zoomDelta,
+        crop: {
+          x: (x % scale) * cropSize,
+          y: (y % scale) * cropSize,
+          size: cropSize
+        }
+      };
+    };
+
+    let demArchive = null;
+    const demPmtilesArchive = () => {
+      demArchive ??= new PMTiles(demSource.url);
+      return demArchive;
+    };
+
+    const fetchDemTileData = async (nativeTile, abortController) => {
+      if (demSource.type === "pmtiles") {
+        const tile = await demPmtilesArchive().getZxy(
+          nativeTile.z,
+          nativeTile.x,
+          nativeTile.y,
+          abortController?.signal
+        );
+        return tile ? { status: 200, data: tile.data } : { status: 404, data: null };
+      }
+
+      const tileUrl = `${demSource.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png?v=${demTileVersion}`;
+      const response = await fetch(tileUrl, { signal: abortController?.signal });
+      if (!response.ok) {
+        return { status: response.status, data: null };
+      }
+      return { status: response.status, data: await response.arrayBuffer() };
+    };
+
+    const fetchDemTileWithParentFallback = async (z, x, y, abortController) => {
+      const firstZoom = Math.min(z, demNativeMaxZoom);
+      for (let candidateZoom = firstZoom; candidateZoom >= demNativeMinZoom; candidateZoom -= 1) {
+        const nativeTile = nativeDemTileForRequest(z, x, y, candidateZoom);
+        const tile = await fetchDemTileData(nativeTile, abortController);
+        if (tile.status === 204 || tile.status === 404) {
+          if (demDebug) {
+            console.info("DEM tile miss", { requested: { z, x, y }, nativeTile, status: tile.status });
+          }
+          continue;
+        }
+        if (tile.status < 200 || tile.status >= 300) {
+          throw new Error(`DEM tile HTTP ${tile.status}`);
+        }
+        if (demDebug) {
+          console.info("DEM tile hit", { requested: { z, x, y }, nativeTile, source: demSource.type });
+        }
+        return { nativeTile, data: tile.data };
+      }
+      return null;
+    };
+
+    const ignOrthoTiles = () => [
+      "https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2011-2015&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
+    ];
+
+    const bathymetrySourceOptions = () => {
+      const common = {
+        type: "raster-dem",
+        bounds: bathymetryBounds,
+        minzoom: 11,
+        encoding: "terrarium",
+        tileSize: demTileSize
+      };
+
+      if (useDirectPmtilesDem) {
+        return {
+          ...common,
+          url: `pmtiles://${demSource.url}`
+        };
+      }
+
+      const maskedSourceMaxZoom = demSource.type === "pmtiles" ? demNativeMaxZoom : demSourceMaxZoom;
+      return {
+        ...common,
+        tiles: [
+          "masked-dem://bathymetrie/{z}/{x}/{y}.png"
+        ],
+        // Source maxzoom is the native DEM zoom. MapLibre still overzooms this above Z15/Z18.
+        maxzoom: maskedSourceMaxZoom
+      };
+    };
+
+    const maskedDemProtocol = async (params, abortController) => {
+      const { z, x, y } = parseMaskedDemUrl(params.url);
+      const cacheKey = `${demSource.type}/${demSource.url}/${demTileVersion}/${demNativeMaxZoom}/${z}/${x}/${y}`;
+      const cached = landMaskTileCache.get(cacheKey);
+      if (cached) {
+        return { data: new Uint8Array(cached.slice(0)) };
+      }
+
+      const tileResult = await fetchDemTileWithParentFallback(z, x, y, abortController);
+      if (!tileResult) {
+        const emptyTile = await noDataOceanTileBuffer(z, x, y);
+        landMaskTileCache.set(cacheKey, emptyTile);
+        return { data: new Uint8Array(emptyTile.slice(0)) };
+      }
+
+      const { nativeTile, data: sourceBuffer } = tileResult;
+      const bitmap = await createImageBitmap(new Blob([sourceBuffer], { type: "image/png" }));
+      const canvas = createRasterCanvas(demTileSize, demTileSize);
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.imageSmoothingEnabled = false;
+      if (nativeTile.crop) {
+        context.drawImage(
+          bitmap,
+          nativeTile.crop.x,
+          nativeTile.crop.y,
+          nativeTile.crop.size,
+          nativeTile.crop.size,
+          0,
+          0,
+          demTileSize,
+          demTileSize
+        );
+      } else {
+        context.drawImage(bitmap, 0, 0, demTileSize, demTileSize);
+      }
+      bitmap.close?.();
+
+      const imageData = context.getImageData(0, 0, demTileSize, demTileSize);
+      const maskData = tideLandMaskEnabled ? (await renderLandMaskImageData(z, x, y, demTileSize)).data : null;
+      const data = imageData.data;
+      for (let index = 0; index < data.length; index += 4) {
+        if (data[index + 3] < 128) {
+          data[index] = noDataOceanColor[0];
+          data[index + 1] = noDataOceanColor[1];
+          data[index + 2] = noDataOceanColor[2];
+          data[index + 3] = 255;
+        }
+        if (maskData && maskData[index + 3] > 0) {
+          data[index] = landMaskColor[0];
+          data[index + 1] = landMaskColor[1];
+          data[index + 2] = landMaskColor[2];
+          data[index + 3] = 255;
+        }
+      }
+      context.putImageData(imageData, 0, 0);
+
+      const maskedBuffer = await canvasToPngBuffer(canvas);
+      landMaskTileCache.set(cacheKey, maskedBuffer);
+      return { data: new Uint8Array(maskedBuffer.slice(0)) };
+    };
+
+    maplibregl.addProtocol("masked-dem", maskedDemProtocol);
+
+    const setTideLevel = (level, tideHeight = currentTideHeight) => {
+      currentTideDemLevel = level;
+      currentTideHeight = tideHeight;
+      if (map.getLayer("tide-overlay")) {
+        map.setPaintProperty("tide-overlay", "color-relief-color", tideColorExpression(level, tideLayerOpacity));
+      }
+      if (map.getLayer("tide-foam")) {
+        map.setPaintProperty("tide-foam", "color-relief-color", tideFoamExpression(level, tideLayerOpacity));
+      }
+    };
+
+    const setTideOpacity = (value) => {
+      tideLayerOpacity = Number(value) / 100;
+      tideOpacityValue.textContent = `${Math.round(tideLayerOpacity * 100)}%`;
+      setTideLevel(currentTideDemLevel, currentTideHeight);
+    };
+
+    const setIgnOrthoVisible = (visible) => {
+      if (map.getLayer("ign-ortho")) {
+        map.setLayoutProperty("ign-ortho", "visibility", visible ? "visible" : "none");
+      }
+    };
+
+    const setTideOverlayVisible = (visible) => {
+      if (map.getLayer("tide-overlay")) {
+        map.setLayoutProperty("tide-overlay", "visibility", visible ? "visible" : "none");
+      }
+      if (map.getLayer("tide-foam")) {
+        map.setLayoutProperty("tide-foam", "visibility", visible ? "visible" : "none");
+      }
+    };
+
+    const selectedDemInputValue = () => (
+      demTilesSelect.value === "custom"
+        ? demTilesCustomInput.value
+        : demTilesSelect.value
+    );
+
+    const applyDemSelection = () => {
+      const selectedDem = normalizeDemSelection(selectedDemInputValue());
+      const nativeMaxZoom = Number(demMaxZoomInput.value);
+      const url = new URL(window.location.href);
+
+      if (selectedDem) {
+        url.searchParams.set("dem", selectedDem);
+      } else {
+        url.searchParams.delete("dem");
+      }
+
+      if (Number.isInteger(nativeMaxZoom) && nativeMaxZoom >= 0 && nativeMaxZoom <= 22) {
+        url.searchParams.set("demMaxZoom", String(nativeMaxZoom));
+      } else {
+        url.searchParams.delete("demMaxZoom");
+      }
+
+      url.searchParams.set("v", `dem-${Date.now()}`);
+      window.location.href = url.toString();
+    };
+
+    const applyTideLandMaskSelection = () => {
+      const url = new URL(window.location.href);
+      if (tideLandMaskToggle.checked) {
+        url.searchParams.delete("tideMask");
+      } else {
+        url.searchParams.set("tideMask", "0");
+      }
+      url.searchParams.set("v", `mask-${Date.now()}`);
+      window.location.href = url.toString();
+    };
+
+    const addIgnOrthoSourceAndLayer = () => {
+      map.addSource("ign-ortho", {
+        type: "raster",
+        tiles: ignOrthoTiles(),
+        minzoom: 0,
+        maxzoom: 19,
+        tileSize: 256,
+        attribution: "IGN-F/GéoPlateforme"
+      });
+
+      const layer = {
+        id: "ign-ortho",
+        type: "raster",
+        source: "ign-ortho",
+        layout: {
+          visibility: ignOrthoToggle.checked ? "visible" : "none"
+        },
+        paint: {
+          "raster-opacity": 1,
+          "raster-fade-duration": 0
+        }
+      };
+
+      if (map.getLayer("tide-overlay")) {
+        map.addLayer(layer, "tide-overlay");
+      } else {
+        map.addLayer(layer);
+      }
+    };
+
+    const setDebugPanelOpen = (open) => {
+      debugPanel.hidden = !open;
+    };
+
+    const createDebugControl = () => {
+      let container;
+      return {
+        onAdd() {
+          container = document.createElement("div");
+          container.className = "maplibregl-ctrl maplibregl-ctrl-group";
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "maplibregl-ctrl-icon debug-control-button";
+          button.setAttribute("aria-label", "Paramètres");
+          button.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M19.4 15a8.1 8.1 0 0 0 .1-1 8.1 8.1 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7.8 7.8 0 0 0-1.7-1L15 5.5h-4l-.3 2.6a7.8 7.8 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a8.1 8.1 0 0 0-.1 1 8.1 8.1 0 0 0 .1 1l-2 1.5 2 3.4 2.4-1a7.8 7.8 0 0 0 1.7 1l.3 2.6h4l.3-2.6a7.8 7.8 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+          `;
+          button.addEventListener("click", () => setDebugPanelOpen(debugPanel.hidden));
+          container.appendChild(button);
+          return container;
+        },
+        onRemove() {
+          container?.remove();
+          container = undefined;
+        }
+      };
+    };
+
+    const setMaregramStatus = (message = "") => {
+      maregramStatus.textContent = message;
+    };
+
+    const selectedHarbor = () => harbors.find((site) => site.cst === tideStation.value);
+
+    const selectedZhToDemOffset = () => {
+      const station = selectedHarbor();
+      return zhToDemOffsetByHarbor[tideStation.value] ??
+        zhToDemOffsetByHarbor[station?.ch_ref] ??
+        defaultZhToDemOffset;
+    };
+
+    const isLeapYear = (year) => new Date(year, 1, 29).getMonth() === 1;
+
+    const coefficientDuration = (year, month) => {
+      const referenceYear = month > 2 ? year + 1 : year;
+      return isLeapYear(referenceYear) ? "366" : "365";
+    };
+
+    const formatCoefficient = (values) => {
+      if (!values.length) {
+        return "Coeff --";
+      }
+      const uniqueValues = values.filter((value, index) => index === 0 || value !== values[index - 1]);
+      return `Coeff ${uniqueValues.join(" / ")}`;
+    };
+
+    const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
+
+    const selectedInputDate = () => dateFromInput(tideDate.value || todayString());
+
+    const coefficientBackground = (values) => {
+      const finiteValues = values.filter((value) => Number.isFinite(value));
+      if (!finiteValues.length) {
+        return "#f8fafc";
+      }
+      const maxValue = Math.max(...finiteValues);
+      const ratio = Math.max(0, Math.min(1, (maxValue - 35) / 65));
+      const hue = 190 - ratio * 135;
+      const saturation = 52 + ratio * 10;
+      const lightness = 77 - ratio * 3;
+      return `hsl(${hue.toFixed(0)}, ${saturation.toFixed(0)}%, ${lightness.toFixed(0)}%)`;
+    };
+
+    const calendarDayLabel = (date) => {
+      const weekday = calendarWeekdayFormatter.format(date).replace(".", "");
+      return `${date.getDate()} ${weekday}`;
+    };
+
+    const monthCacheKey = (year, month) => `${tideStation.value}:${year}-${String(month).padStart(2, "0")}`;
+
+    const fetchStaticTideCalendar = async (station) => {
+      const path = `data/shom/${encodeURIComponent(station)}.json`;
+      if (!shomStaticCache.has(path)) {
+        shomStaticCache.set(path, fetch(path).then((response) => {
+          if (!response.ok) {
+            throw new Error(`static tide calendar HTTP ${response.status}`);
+          }
+          return response.json();
+        }));
+      }
+      return shomStaticCache.get(path);
+    };
+
+    const tideRowsFromPayload = (payload) => {
+      const rows = Object.entries(payload).flatMap(([date, values]) =>
+        values.map(([time, height]) => ({
+          time: new Date(`${date}T${time}`),
+          height: Number(height)
+        }))
+      );
+      if (!rows.length) {
+        throw new Error("empty tide response");
+      }
+      return rows;
+    };
+
+    const staticWaterLevelsForDate = (calendar, dateString) => {
+      const rows = calendar.waterLevels?.[dateString];
+      if (!Array.isArray(rows) || !rows.length) {
+        throw new Error("no static water levels for date");
+      }
+      const normalizeClockTime = (value) => {
+        const parts = String(value).split(":");
+        if (parts.length < 2) {
+          return "00:00:00";
+        }
+        return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}:${(parts[2] ?? "00").padStart(2, "0")}`;
+      };
+      const points = rows
+        .map((row) => {
+          const time = Array.isArray(row) ? row[0] : row.time;
+          const height = Array.isArray(row) ? row[1] : row.height;
+          const timestamp = String(time).includes("T")
+            ? new Date(time)
+            : new Date(`${dateString}T${normalizeClockTime(time)}`);
+          return {
+            time: timestamp,
+            height: Number(height)
+          };
+        })
+        .filter((point) => Number.isFinite(point.height) && !Number.isNaN(point.time.getTime()));
+      if (!points.length) {
+        throw new Error("empty static water levels for date");
+      }
+      return points;
+    };
+
+    const fetchMonthlyCoefficients = async (year, month) => {
+      const cacheKey = monthCacheKey(year, month);
+      if (monthCoefficientCache.has(cacheKey)) {
+        return monthCoefficientCache.get(cacheKey);
+      }
+      if (useStaticShom) {
+        const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+        const payload = await fetchStaticTideCalendar(tideStation.value);
+        const rows = Array.from({ length: daysInMonth(year, month) }, (_, index) => {
+          const values = Array.isArray(payload?.coefficients?.[monthKey]?.[index]) ? payload.coefficients[monthKey][index] : [];
+          return values
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value));
+        });
+        monthCoefficientCache.set(cacheKey, rows);
+        return rows;
+      }
+      const station = selectedHarbor();
+      const url = new URL(`${shomProxyBase}/shom/coeff`);
+      url.search = new URLSearchParams({
+        harborName: tideStation.value,
+        duration: String(daysInMonth(year, month)),
+        date: `${year}-${String(month).padStart(2, "0")}-01`,
+        utc: String(Number(station?.ut ?? 10) / 10),
+        correlation: "1"
+      });
+
+      const response = await fetch(url);
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(`SHOM coeff HTTP ${response.status}`);
+      }
+      const rows = Array.from({ length: daysInMonth(year, month) }, (_, index) => {
+        const values = Array.isArray(payload?.[0]?.[index]) ? payload[0][index] : [];
+        return values
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value));
+      });
+      monthCoefficientCache.set(cacheKey, rows);
+      return rows;
+    };
+
+    const renderCalendarMonth = (year, month, monthCoefficients) => {
+      const selected = selectedInputDate();
+      const dayCount = daysInMonth(year, month);
+      const daysPerColumn = Math.ceil(dayCount / 3);
+      calendarGrid.replaceChildren();
+
+      for (let columnIndex = 0; columnIndex < 3; columnIndex += 1) {
+        const column = document.createElement("div");
+        column.className = "calendar-column";
+
+        const header = document.createElement("div");
+        header.className = "calendar-column-head";
+        header.innerHTML = "<span>Date</span><span>Coeff</span>";
+        column.appendChild(header);
+
+        const startDay = columnIndex * daysPerColumn + 1;
+        const endDay = Math.min(dayCount, startDay + daysPerColumn - 1);
+        for (let day = startDay; day <= endDay; day += 1) {
+          const date = new Date(year, month - 1, day);
+          const values = monthCoefficients[day - 1] ?? [];
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "calendar-day";
+          button.style.background = coefficientBackground(values);
+          button.dataset.date = inputDateString(date);
+          button.setAttribute("aria-label", `${calendarDayLabel(date)}, ${formatCoefficient(values)}`);
+          button.setAttribute("aria-pressed", String(
+            selected.getFullYear() === year &&
+            selected.getMonth() === month - 1 &&
+            selected.getDate() === day
+          ));
+          if (button.getAttribute("aria-pressed") === "true") {
+            button.classList.add("calendar-day-selected");
+          }
+
+          const label = document.createElement("span");
+          label.className = "calendar-day-name";
+          label.textContent = calendarDayLabel(date);
+
+          const coeff = document.createElement("span");
+          coeff.className = "calendar-day-coeff";
+          coeff.textContent = values.length ? values.join("\n") : "--";
+
+          button.append(label, coeff);
+          button.addEventListener("click", () => {
+            tideDate.value = button.dataset.date;
+            updateDateButton();
+            calendarPanel.hidden = true;
+            loadMaregram();
+          });
+          column.appendChild(button);
+        }
+
+        calendarGrid.appendChild(column);
+      }
+    };
+
+    const renderCalendar = async () => {
+      const date = calendarMonthDate ?? new Date(selectedInputDate().getFullYear(), selectedInputDate().getMonth(), 1);
+      calendarMonthDate = new Date(date.getFullYear(), date.getMonth(), 1);
+      const year = calendarMonthDate.getFullYear();
+      const month = calendarMonthDate.getMonth() + 1;
+      const renderToken = ++calendarRenderToken;
+
+      calendarMonth.textContent = calendarMonthFormatter.format(calendarMonthDate);
+      calendarGrid.replaceChildren();
+      const loading = document.createElement("div");
+      loading.className = "calendar-loading";
+      loading.textContent = "Chargement des coefficients";
+      calendarGrid.appendChild(loading);
+
+      try {
+        const monthCoefficients = await fetchMonthlyCoefficients(year, month);
+        if (renderToken !== calendarRenderToken) {
+          return;
+        }
+        renderCalendarMonth(year, month, monthCoefficients);
+      } catch (error) {
+        if (renderToken !== calendarRenderToken) {
+          return;
+        }
+        calendarGrid.replaceChildren();
+        const message = document.createElement("div");
+        message.className = "calendar-loading";
+        message.textContent = `Coefficients indisponibles (${error.message})`;
+        calendarGrid.appendChild(message);
+      }
+    };
+
+    const positionCalendar = () => {
+      if (window.matchMedia("(max-width: 700px)").matches) {
+        calendarPanel.style.removeProperty("--calendar-left");
+        calendarPanel.style.removeProperty("--calendar-bottom");
+        const panelRect = maregramPanel.getBoundingClientRect();
+        const bottom = Math.max(8, window.innerHeight - panelRect.top + 3);
+        const safeTop = 74;
+        const maxHeight = window.matchMedia("(max-width: 430px)").matches ? 314 : 324;
+        const availableHeight = Math.max(238, panelRect.top - safeTop - 3);
+        const height = Math.min(maxHeight, availableHeight);
+        calendarPanel.style.setProperty("--calendar-mobile-bottom", `${Math.round(bottom)}px`);
+        calendarPanel.style.setProperty("--calendar-mobile-height", `${Math.round(height)}px`);
+        return;
+      }
+
+      calendarPanel.style.removeProperty("--calendar-mobile-bottom");
+      calendarPanel.style.removeProperty("--calendar-mobile-height");
+      const rect = datePickerButton.getBoundingClientRect();
+      const calendarWidth = Math.min(410, window.innerWidth - 32);
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - calendarWidth - 12));
+      const bottom = Math.max(12, window.innerHeight - rect.top + 8);
+      calendarPanel.style.setProperty("--calendar-left", `${Math.round(left)}px`);
+      calendarPanel.style.setProperty("--calendar-bottom", `${Math.round(bottom)}px`);
+    };
+
+    const openCalendar = () => {
+      const date = selectedInputDate();
+      calendarMonthDate = new Date(date.getFullYear(), date.getMonth(), 1);
+      positionCalendar();
+      calendarPanel.hidden = false;
+      renderCalendar();
+    };
+
+    const shiftCalendarMonth = (months) => {
+      const date = calendarMonthDate ?? new Date(selectedInputDate().getFullYear(), selectedInputDate().getMonth(), 1);
+      calendarMonthDate = new Date(date.getFullYear(), date.getMonth() + months, 1);
+      renderCalendar();
+    };
+
+    const setMaregramReadout = (point) => {
+      const demLevel = point.height + selectedZhToDemOffset();
+      maregramTime.textContent = point.time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      maregramHeight.textContent = `Marée ${point.height.toFixed(2)} m`;
+      setTideLevel(demLevel, point.height);
+    };
+
+    const clearActiveTideEvent = () => {
+      tideEvents.querySelectorAll(".tide-event-active").forEach((node) => {
+        node.classList.remove("tide-event-active");
+      });
+    };
+
+    const setMaregramCursorPoint = (point, activeEvent = null) => {
+      if (!chart.plot || !chart.cursorLine || !chart.cursorPoint || !chart.x || !chart.y) {
+        return;
+      }
+      const { left, right } = chart.plot;
+      const x = Math.max(left, Math.min(right, chart.x(point.time)));
+      const y = chart.y(point.height);
+      chart.active = point;
+      chart.cursorLine.setAttribute("x1", x);
+      chart.cursorLine.setAttribute("x2", x);
+      chart.cursorPoint.setAttribute("cx", x);
+      chart.cursorPoint.setAttribute("cy", y);
+      setMaregramReadout(point);
+      clearActiveTideEvent();
+      activeEvent?.classList.add("tide-event-active");
+    };
+
+    const formatEventTime = (time) =>
+      time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+    const tideEventType = (type) => type === "high" ? "Pleine mer" : "Basse mer";
+
+    const extractTideEvents = (data) => {
+      const events = [];
+      for (let index = 1; index < data.length - 1; index += 1) {
+        const previous = data[index - 1].height;
+        const current = data[index].height;
+        const next = data[index + 1].height;
+        if ((current >= previous && current > next) || (current > previous && current >= next)) {
+          events.push({ ...data[index], type: "high" });
+        } else if ((current <= previous && current < next) || (current < previous && current <= next)) {
+          events.push({ ...data[index], type: "low" });
+        }
+      }
+      const groups = [];
+      for (const event of events) {
+        const previous = groups[groups.length - 1];
+        const isSameEvent = previous &&
+          previous.type === event.type &&
+          event.time.getTime() - previous.endTime.getTime() <= 45 * 60000;
+        if (isSameEvent) {
+          previous.endTime = event.time;
+          previous.points.push(event);
+        } else {
+          groups.push({
+            type: event.type,
+            endTime: event.time,
+            points: [event]
+          });
+        }
+      }
+      return groups.map((group) => {
+        const points = group.points;
+        const best = points.reduce((selected, point) => {
+          if (group.type === "high") {
+            return point.height > selected.height ? point : selected;
+          }
+          return point.height < selected.height ? point : selected;
+        }, points[0]);
+        const first = points[0].time.getTime();
+        const last = points[points.length - 1].time.getTime();
+        return {
+          type: group.type,
+          time: new Date((first + last) / 2),
+          height: best.height
+        };
+      });
+    };
+
+    const renderTideEvents = (events) => {
+      tideEvents.replaceChildren();
+      for (const event of events.slice(0, 4)) {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = `tide-event tide-event-${event.type}`;
+        item.setAttribute("aria-label", `${tideEventType(event.type)} ${formatEventTime(event.time)} ${event.height.toFixed(2)} m`);
+        item.innerHTML = `
+          <span class="tide-event-type">${tideEventType(event.type)}</span>
+          <span class="tide-event-time">${formatEventTime(event.time)}</span>
+          <span class="tide-event-height">${event.height.toFixed(2)} m</span>
+        `;
+        item.addEventListener("click", () => setMaregramCursorPoint(event, item));
+        tideEvents.appendChild(item);
+      }
+    };
+
+    const generateDemoTide = (dateString) => {
+      const [year, month, day] = dateString.split("-").map(Number);
+      const start = new Date(year, month - 1, day, 0, 0, 0);
+      const dayPhase = (Date.UTC(year, month - 1, day) / 86400000) % 29.53;
+      const phase = (dayPhase / 29.53) * Math.PI * 2;
+      return Array.from({ length: 145 }, (_, index) => {
+        const minutes = index * 10;
+        const time = new Date(start.getTime() + minutes * 60000);
+        const hours = minutes / 60;
+        const height = Math.max(
+          0.15,
+          3.05 +
+            2.25 * Math.cos(((hours - 4.4) / 12.42) * Math.PI * 2 + phase) +
+            0.35 * Math.cos(((hours - 8) / 24.84) * Math.PI * 2 + phase * 0.45)
+        );
+        return { time, height };
+      });
+    };
+
+    const shiftedDateString = (dateString, dayDelta) => {
+      const [year, month, day] = dateString.split("-").map(Number);
+      const date = new Date(year, month - 1, day + dayDelta);
+      return inputDateString(date);
+    };
+
+    const tideEventsFromRows = (dateString, rows) => rows
+      .filter(([type]) => type === "tide.high" || type === "tide.low")
+      .map(([type, time, height]) => ({
+        type: type === "tide.high" ? "high" : "low",
+        time: new Date(`${dateString}T${time}:00`),
+        height: Number(height)
+      }))
+      .filter((event) => Number.isFinite(event.height) && !Number.isNaN(event.time.getTime()));
+
+    const staticTideEventsAroundDate = (calendar, dateString) => [-1, 0, 1]
+      .flatMap((offset) => {
+        const key = shiftedDateString(dateString, offset);
+        return tideEventsFromRows(key, calendar.events?.[key] ?? []);
+      })
+      .sort((a, b) => a.time - b.time);
+
+    const interpolateTideBetweenExtrema = (dateString, events) => {
+      const [year, month, day] = dateString.split("-").map(Number);
+      const start = new Date(year, month - 1, day, 0, 0, 0);
+      const points = [];
+      let eventIndex = 1;
+
+      for (let index = 0; index <= 144; index += 1) {
+        const time = new Date(start.getTime() + index * 10 * 60000);
+        while (eventIndex < events.length && events[eventIndex].time < time) {
+          eventIndex += 1;
+        }
+        const previous = events[eventIndex - 1];
+        const next = events[eventIndex];
+        if (!previous || !next) {
+          throw new Error("missing surrounding tide extrema");
+        }
+        const span = next.time.getTime() - previous.time.getTime();
+        const ratio = span > 0 ? (time.getTime() - previous.time.getTime()) / span : 0;
+        const eased = (1 - Math.cos(Math.PI * Math.max(0, Math.min(1, ratio)))) * 0.5;
+        points.push({
+          time,
+          height: previous.height + (next.height - previous.height) * eased
+        });
+      }
+
+      return points;
+    };
+
+    const populateStations = (sites) => {
+      const current = tideStation.value;
+      harbors = sites;
+      tideStation.replaceChildren();
+      for (const site of sites) {
+        const option = document.createElement("option");
+        option.value = site.cst;
+        option.textContent = site.toponyme;
+        tideStation.appendChild(option);
+      }
+      if (sites.some((site) => site.cst === current)) {
+        tideStation.value = current;
+      } else if (sites.length) {
+        tideStation.value = sites[0].cst;
+      }
+    };
+
+    const stationDistance = (site, center) => {
+      const lat = Number(site.lat);
+      const lon = Number(site.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+        return Infinity;
+      }
+      const latDelta = lat - center.lat;
+      const lonDelta = (lon - center.lng) * Math.cos((center.lat * Math.PI) / 180);
+      return latDelta * latDelta + lonDelta * lonDelta;
+    };
+
+    const selectNearestStation = () => {
+      if (!harbors.length) {
+        return false;
+      }
+      const center = map.getCenter();
+      const nearest = harbors.reduce((best, site) => {
+        const distance = stationDistance(site, center);
+        return distance < best.distance ? { site, distance } : best;
+      }, { site: null, distance: Infinity }).site;
+      if (!nearest || tideStation.value === nearest.cst) {
+        return false;
+      }
+      tideStation.value = nearest.cst;
+      monthCoefficientCache.clear();
+      if (!calendarPanel.hidden) {
+        renderCalendar();
+      }
+      return true;
+    };
+
+    const loadStations = async () => {
+      populateStations(fallbackStations);
+      if (useStaticShom) {
+        return;
+      }
+      try {
+        const response = await fetch(`${shomProxyBase}/shom/harbors`);
+        const payload = await response.json();
+        const sites = payload.features
+          .map((feature) => feature.properties)
+          .filter((site) => site.cache === 1 && site.h_legale === 1 && site.ut !== null)
+          .sort((a, b) => a.toponyme.localeCompare(b.toponyme, "fr"));
+        populateStations(sites);
+      } catch {
+        setMaregramStatus("Ports SHOM indisponibles");
+      }
+    };
+
+    const fetchTideData = async () => {
+      if (useStaticShom) {
+        const calendar = await fetchStaticTideCalendar(tideStation.value);
+        if (calendar.waterLevels?.[tideDate.value]) {
+          return staticWaterLevelsForDate(calendar, tideDate.value);
+        }
+        const events = staticTideEventsAroundDate(calendar, tideDate.value);
+        return interpolateTideBetweenExtrema(tideDate.value, events);
+      }
+
+      const url = new URL(`${shomProxyBase}/shom/wl`);
+      url.search = new URLSearchParams({
+        harborName: tideStation.value,
+        duration: "1",
+        date: tideDate.value,
+        utc: "standard",
+        nbWaterLevels: "288"
+      });
+
+      const response = await fetch(url);
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(`SHOM HTTP ${response.status}`);
+      }
+      return tideRowsFromPayload(payload);
+    };
+
+    const fetchTideEvents = async () => {
+      let payload;
+      if (useStaticShom) {
+        payload = await fetchStaticTideCalendar(tideStation.value);
+        const events = tideEventsFromRows(tideDate.value, payload.events?.[tideDate.value] ?? []);
+        if (events.length) {
+          return events;
+        }
+        if (payload.waterLevels?.[tideDate.value]) {
+          return extractTideEvents(staticWaterLevelsForDate(payload, tideDate.value));
+        }
+        return events;
+      } else {
+        const url = new URL(`${shomProxyBase}/shom/hlt`);
+        url.search = new URLSearchParams({
+          harborName: tideStation.value,
+          duration: "7",
+          date: tideDate.value,
+          utc: "standard",
+          correlation: "1"
+        });
+
+        const response = await fetch(url);
+        payload = await response.json();
+        if (!response.ok) {
+          throw new Error(`SHOM HLT HTTP ${response.status}`);
+        }
+      }
+      return tideEventsFromRows(tideDate.value, payload[tideDate.value] ?? []);
+    };
+
+    const fetchCoefficient = async () => {
+      const [year, month, day] = tideDate.value.split("-").map(Number);
+      const monthRows = await fetchMonthlyCoefficients(year, month);
+      return (monthRows[day - 1] ?? [])
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value));
+    };
+
+    const interpolatePoint = (timeMs) => {
+      const data = chart.data;
+      if (timeMs <= data[0].time.getTime()) {
+        return data[0];
+      }
+      if (timeMs >= data[data.length - 1].time.getTime()) {
+        return data[data.length - 1];
+      }
+      let index = 1;
+      while (index < data.length && data[index].time.getTime() < timeMs) {
+        index += 1;
+      }
+      const previous = data[index - 1];
+      const next = data[index];
+      const t = (timeMs - previous.time.getTime()) / (next.time.getTime() - previous.time.getTime());
+      return {
+        time: new Date(timeMs),
+        height: previous.height + (next.height - previous.height) * t
+      };
+    };
+
+    const updateMaregramCursor = (clientX) => {
+      if (!chart.data.length) {
+        return;
+      }
+      const { left, right, top, bottom } = chart.plot;
+      const rect = maregramChart.getBoundingClientRect();
+      const viewX = ((clientX - rect.left) / rect.width) * chart.width;
+      const x = Math.max(left, Math.min(right, viewX));
+      const start = chart.data[0].time.getTime();
+      const end = chart.data[chart.data.length - 1].time.getTime();
+      const point = interpolatePoint(start + ((x - left) / (right - left)) * (end - start));
+      setMaregramCursorPoint(point);
+    };
+
+    const renderMaregram = (data, tideEventData = null) => {
+      chart.data = data;
+      renderTideEvents(tideEventData?.length ? tideEventData : extractTideEvents(data));
+      maregramChart.replaceChildren();
+      const { width, height, margin } = chart;
+      const left = margin.left;
+      const right = width - margin.right;
+      const top = margin.top;
+      const bottom = height - margin.bottom;
+      chart.plot = { left, right, top, bottom };
+
+      const minTime = data[0].time.getTime();
+      const maxTime = data[data.length - 1].time.getTime();
+      const minHeight = Math.floor(Math.min(...data.map((point) => point.height)) - 0.25);
+      const maxHeight = Math.ceil(Math.max(...data.map((point) => point.height)) + 0.25);
+      const xFor = (time) => left + ((time.getTime() - minTime) / (maxTime - minTime)) * (right - left);
+      const yFor = (value) => bottom - ((value - minHeight) / (maxHeight - minHeight)) * (bottom - top);
+      chart.x = xFor;
+      chart.y = yFor;
+
+      for (let hour = 0; hour <= 24; hour += 3) {
+        const x = left + (hour / 24) * (right - left);
+        maregramChart.appendChild(svgNode("line", { x1: x, y1: top, x2: x, y2: bottom, class: "maregram-grid" }));
+        maregramChart.appendChild(svgNode("text", { x, y: height - 8, "text-anchor": "middle", fill: "#475569", "font-size": "11" })).textContent = String(hour);
+      }
+
+      for (let value = minHeight; value <= maxHeight; value += Math.max(1, Math.ceil((maxHeight - minHeight) / 5))) {
+        const y = yFor(value);
+        maregramChart.appendChild(svgNode("line", { x1: left, y1: y, x2: right, y2: y, class: "maregram-grid" }));
+        maregramChart.appendChild(svgNode("text", { x: left - 8, y: y + 4, "text-anchor": "end", fill: "#475569", "font-size": "11" })).textContent = value.toFixed(0);
+      }
+
+      maregramChart.appendChild(svgNode("line", { x1: left, y1: bottom, x2: right, y2: bottom, class: "maregram-axis" }));
+      maregramChart.appendChild(svgNode("line", { x1: left, y1: top, x2: left, y2: bottom, class: "maregram-axis" }));
+
+      const path = data
+        .map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(point.time).toFixed(2)} ${yFor(point.height).toFixed(2)}`)
+        .join(" ");
+      const area = `${path} L ${right} ${bottom} L ${left} ${bottom} Z`;
+      maregramChart.appendChild(svgNode("path", { d: area, class: "maregram-water" }));
+      maregramChart.appendChild(svgNode("path", { d: path, class: "maregram-path" }));
+
+      chart.cursorLine = svgNode("line", { y1: top, y2: bottom, class: "maregram-cursor" });
+      chart.cursorPoint = svgNode("circle", { r: 4.5, class: "maregram-point" });
+      maregramChart.appendChild(chart.cursorLine);
+      maregramChart.appendChild(chart.cursorPoint);
+
+      maregramChart.onpointermove = (event) => updateMaregramCursor(event.clientX);
+      maregramChart.onpointerdown = (event) => updateMaregramCursor(event.clientX);
+      updateMaregramCursor(maregramChart.getBoundingClientRect().left + maregramChart.getBoundingClientRect().width * 0.5);
+    };
+
+    const loadMaregram = async () => {
+      setMaregramStatus("Chargement marée");
+      maregramCoeff.textContent = "Coeff --";
+      const [tideResult, coefficientResult, tideEventsResult] = await Promise.allSettled([
+        fetchTideData(),
+        fetchCoefficient(),
+        fetchTideEvents()
+      ]);
+
+      if (coefficientResult.status === "fulfilled") {
+        maregramCoeff.textContent = formatCoefficient(coefficientResult.value);
+      }
+
+      if (tideResult.status === "fulfilled") {
+        setMaregramStatus("");
+        renderMaregram(tideResult.value, tideEventsResult.status === "fulfilled" ? tideEventsResult.value : null);
+      } else {
+        setMaregramStatus(`Marée indisponible, courbe demo (${tideResult.reason.message})`);
+        renderMaregram(generateDemoTide(tideDate.value));
+      }
+    };
+
+    tideDate.value = todayString();
+    updateDateButton();
+
+    const map = new maplibregl.Map({
+      container: "map",
+      style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+      center: mapInitialCenter,
+      zoom: mapMinZoom,
+      minZoom: mapMinZoom,
+      maxBounds: mapMaxBounds,
+      hash: true,
+      pitch: 0,
+      minPitch: 0,
+      maxPitch: 0,
+      bearing: 0,
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new maplibregl.GeolocateControl({
+      positionOptions: {
+        enableHighAccuracy: true
+      },
+      trackUserLocation: true,
+      showUserHeading: true,
+      fitBoundsOptions: {
+        maxZoom: 16
+      }
+    }), "top-right");
+    if (isLocalRuntime) {
+      map.addControl(createDebugControl(), "top-right");
+    }
+
+    map.dragRotate.disable();
+    map.touchZoomRotate.disableRotation();
+    map.keyboard?.disableRotation?.();
+    const lockMapRotation = () => {
+      if (Math.abs(map.getBearing()) > 0.001) {
+        map.setBearing(0);
+      }
+      if (map.getPitch() !== 0) {
+        map.setPitch(0);
+      }
+    };
+    map.on("rotate", lockMapRotation);
+    map.on("pitch", lockMapRotation);
+    lockMapRotation();
+
+    tideStation.addEventListener("change", () => {
+      stationManuallySelected = true;
+      monthCoefficientCache.clear();
+      if (!calendarPanel.hidden) {
+        renderCalendar();
+      }
+      loadMaregram();
+    });
+    tideDate.addEventListener("change", () => {
+      updateDateButton();
+      if (!calendarPanel.hidden) {
+        const date = selectedInputDate();
+        calendarMonthDate = new Date(date.getFullYear(), date.getMonth(), 1);
+        renderCalendar();
+      }
+      loadMaregram();
+    });
+    prevDay.addEventListener("click", () => shiftTideDate(-1));
+    nextDay.addEventListener("click", () => shiftTideDate(1));
+    applyDemButton.addEventListener("click", applyDemSelection);
+    tideLandMaskToggle.addEventListener("change", applyTideLandMaskSelection);
+    demTilesSelect.addEventListener("change", () => {
+      const isCustomDem = demTilesSelect.value === "custom";
+      demTilesCustomInput.hidden = !isCustomDem;
+      if (isCustomDem) {
+        demTilesCustomInput.focus();
+      } else {
+        demMaxZoomInput.value = String(inferDemNativeMaxZoomFromValue(demTilesSelect.value));
+      }
+    });
+    demTilesCustomInput.addEventListener("change", () => {
+      demMaxZoomInput.value = String(inferDemNativeMaxZoomFromValue(demTilesCustomInput.value));
+    });
+    demTilesCustomInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyDemSelection();
+      }
+    });
+    demMaxZoomInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyDemSelection();
+      }
+    });
+    datePickerButton.addEventListener("click", () => {
+      if (calendarPanel.hidden) {
+        openCalendar();
+      } else {
+        calendarPanel.hidden = true;
+      }
+    });
+    calendarPrevMonth.addEventListener("click", () => shiftCalendarMonth(-1));
+    calendarNextMonth.addEventListener("click", () => shiftCalendarMonth(1));
+    window.addEventListener("resize", () => {
+      if (!calendarPanel.hidden) {
+        positionCalendar();
+      }
+    });
+    ignOrthoToggle.addEventListener("change", () => setIgnOrthoVisible(ignOrthoToggle.checked));
+    tideOverlayToggle.addEventListener("change", () => setTideOverlayVisible(tideOverlayToggle.checked));
+    tideOpacityRange.addEventListener("input", () => setTideOpacity(tideOpacityRange.value));
+    document.addEventListener("pointerdown", (event) => {
+      if (
+        !calendarPanel.hidden &&
+        !calendarPanel.contains(event.target) &&
+        !datePickerButton.contains(event.target) &&
+        !prevDay.contains(event.target) &&
+        !nextDay.contains(event.target)
+      ) {
+        calendarPanel.hidden = true;
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        setDebugPanelOpen(false);
+        calendarPanel.hidden = true;
+      }
+    });
+
+    map.on("moveend", () => {
+      if (!stationManuallySelected && selectNearestStation()) {
+        loadMaregram();
+      }
+    });
+
+    loadStations().then(() => {
+      selectNearestStation();
+      loadMaregram();
+    });
+
+    map.on("load", () => {
+      map.addSource("masked-bathymetrie", bathymetrySourceOptions());
+
+      addIgnOrthoSourceAndLayer();
+
+      map.addLayer({
+        id: "tide-overlay",
+        type: "color-relief",
+        source: "masked-bathymetrie",
+        layout: {
+          visibility: tideOverlayToggle.checked ? "visible" : "none"
+        },
+        paint: {
+          "color-relief-opacity": 1,
+          "color-relief-color": tideColorExpression(0),
+          "resampling": "nearest"
+        }
+      });
+
+      map.addLayer({
+        id: "tide-foam",
+        type: "color-relief",
+        source: "masked-bathymetrie",
+        layout: {
+          visibility: tideOverlayToggle.checked ? "visible" : "none"
+        },
+        paint: {
+          "color-relief-opacity": 1,
+          "color-relief-color": tideFoamExpression(0),
+          "resampling": "nearest"
+        }
+      });
+
+      map.addSource("named-places", {
+        type: "geojson",
+        data: namedPlaces
+      });
+
+      map.addLayer({
+        id: "named-place-points",
+        type: "circle",
+        source: "named-places",
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#f97316",
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2
+        }
+      });
+
+      map.addLayer({
+        id: "named-place-labels",
+        type: "symbol",
+        source: "named-places",
+        layout: {
+          "text-field": ["get", "name"],
+          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
+          "text-size": 13,
+          "text-anchor": "top",
+          "text-offset": [0, 0.9],
+          "text-allow-overlap": true
+        },
+        paint: {
+          "text-color": "#111827",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 1.5
+        }
+      });
+
+      if (chart.active) {
+        setMaregramReadout(chart.active);
+      }
+    });
+  </script>
+</body>
+</html>
