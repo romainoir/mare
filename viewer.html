@@ -549,13 +549,12 @@
       }
 
       .date-calendar {
-        top: max(86px, calc(env(safe-area-inset-top) + 18px));
+        top: auto;
         left: 50%;
         right: auto;
-        bottom: auto;
+        bottom: var(--calendar-mobile-bottom, 292px);
         width: min(350px, calc(100vw - 42px));
-        height: min(324px, calc(100vh - 220px));
-        height: min(324px, calc(100dvh - 220px));
+        height: var(--calendar-mobile-height, min(324px, calc(100dvh - 220px)));
         border-radius: 8px;
         transform: translateX(-50%);
       }
@@ -612,8 +611,7 @@
 
       .date-calendar {
         width: min(336px, calc(100vw - 44px));
-        height: min(314px, calc(100vh - 218px));
-        height: min(314px, calc(100dvh - 218px));
+        height: var(--calendar-mobile-height, min(314px, calc(100dvh - 218px)));
       }
 
       .calendar-column-head,
@@ -754,6 +752,7 @@
     const nextDay = document.getElementById("nextDay");
     const datePickerButton = document.getElementById("datePickerButton");
     const calendarPanel = document.getElementById("calendarPanel");
+    const maregramPanel = document.querySelector(".maregram-panel");
     const calendarPrevMonth = document.getElementById("calendarPrevMonth");
     const calendarNextMonth = document.getElementById("calendarNextMonth");
     const calendarMonth = document.getElementById("calendarMonth");
@@ -1622,9 +1621,19 @@
       if (window.matchMedia("(max-width: 700px)").matches) {
         calendarPanel.style.removeProperty("--calendar-left");
         calendarPanel.style.removeProperty("--calendar-bottom");
+        const panelRect = maregramPanel.getBoundingClientRect();
+        const bottom = Math.max(8, window.innerHeight - panelRect.top + 3);
+        const safeTop = 74;
+        const maxHeight = window.matchMedia("(max-width: 430px)").matches ? 314 : 324;
+        const availableHeight = Math.max(238, panelRect.top - safeTop - 3);
+        const height = Math.min(maxHeight, availableHeight);
+        calendarPanel.style.setProperty("--calendar-mobile-bottom", `${Math.round(bottom)}px`);
+        calendarPanel.style.setProperty("--calendar-mobile-height", `${Math.round(height)}px`);
         return;
       }
 
+      calendarPanel.style.removeProperty("--calendar-mobile-bottom");
+      calendarPanel.style.removeProperty("--calendar-mobile-height");
       const rect = datePickerButton.getBoundingClientRect();
       const calendarWidth = Math.min(410, window.innerWidth - 32);
       const left = Math.max(12, Math.min(rect.left, window.innerWidth - calendarWidth - 12));
