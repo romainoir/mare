@@ -2,16 +2,28 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>MaRe</title>
   <link rel="icon" href="data:,">
   <link href="https://unpkg.com/maplibre-gl@6.0.0-8/dist/maplibre-gl.css" rel="stylesheet">
   <style>
     html,
-    body,
-    #map {
+    body {
       width: 100%;
       height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #082f3c;
+    }
+
+    #map {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
       margin: 0;
     }
 
@@ -20,10 +32,15 @@
       display: none;
     }
 
+    .maplibregl-ctrl-top-right {
+      top: calc(env(safe-area-inset-top) + 10px);
+      right: calc(env(safe-area-inset-right) + 10px);
+    }
+
     .maregram-panel {
       position: absolute;
       left: 50%;
-      bottom: 18px;
+      bottom: calc(env(safe-area-inset-bottom) + 18px);
       transform: translateX(-50%);
       z-index: 1;
       display: grid;
@@ -343,8 +360,8 @@
 
     .app-logo {
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: calc(env(safe-area-inset-top) + 12px);
+      left: calc(env(safe-area-inset-left) + 12px);
       z-index: 2;
       width: 220px;
       height: auto;
@@ -460,14 +477,14 @@
 
     @media (max-width: 700px) {
       .app-logo {
-        top: 8px;
-        left: 8px;
+        top: calc(env(safe-area-inset-top) + 8px);
+        left: calc(env(safe-area-inset-left) + 8px);
         width: clamp(78px, 22vw, 116px);
         max-height: 70px;
       }
 
       .maregram-panel {
-        bottom: 8px;
+        bottom: calc(env(safe-area-inset-bottom) + 8px);
         gap: 6px;
         width: calc(100% - 16px);
         max-height: min(48vh, 290px);
