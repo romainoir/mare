@@ -640,6 +640,102 @@
         font-size: 9.5px;
       }
     }
+
+    @media (max-height: 520px) and (orientation: landscape) {
+      .app-logo {
+        display: none;
+      }
+
+      .maplibregl-ctrl-top-right {
+        top: calc(env(safe-area-inset-top) + 8px);
+        right: calc(env(safe-area-inset-right) + 8px);
+      }
+
+      .maregram-panel {
+        left: calc(50% + (env(safe-area-inset-left) - env(safe-area-inset-right)) / 2);
+        bottom: 6px;
+        width: calc(100% - env(safe-area-inset-left) - env(safe-area-inset-right) - 20px);
+        max-width: none;
+        max-height: min(38vh, 168px);
+        gap: 5px;
+        padding: 6px 8px;
+        overflow: auto;
+        font-size: 11px;
+      }
+
+      .maregram-heading {
+        display: grid;
+        grid-template-columns: minmax(250px, 0.42fr) auto;
+        gap: 8px;
+        width: 100%;
+        align-items: center;
+      }
+
+      .date-control {
+        display: grid;
+        grid-template-columns: 30px minmax(170px, 1fr) 30px;
+        width: auto;
+      }
+
+      .date-step,
+      .date-button {
+        min-height: 28px;
+      }
+
+      .date-button {
+        min-width: 0;
+        padding: 0 8px;
+      }
+
+      .maregram-coeff {
+        margin-left: auto;
+        font-size: 17px;
+      }
+
+      .tide-events {
+        grid-template-columns: repeat(4, minmax(118px, 1fr));
+        gap: 5px;
+        overflow-x: auto;
+        padding-bottom: 0;
+      }
+
+      .tide-event {
+        min-height: 48px;
+        padding: 4px 6px;
+      }
+
+      .tide-event-type {
+        font-size: 9px;
+      }
+
+      .tide-event-time {
+        font-size: 14px;
+      }
+
+      .tide-event-height {
+        font-size: 11px;
+      }
+
+      .maregram-readout {
+        gap: 8px;
+        font-size: 12px;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+
+      .maregram-status {
+        display: none;
+      }
+
+      .maregram-chart {
+        display: none;
+      }
+
+      .date-calendar {
+        width: min(360px, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 32px));
+        height: var(--calendar-mobile-height, min(230px, calc(100dvh - 160px)));
+      }
+    }
   </style>
 </head>
 <body>
@@ -1638,14 +1734,17 @@
     };
 
     const positionCalendar = () => {
-      if (window.matchMedia("(max-width: 700px)").matches) {
+      const isCompactViewport = window.matchMedia("(max-width: 700px), (max-height: 520px) and (orientation: landscape)").matches;
+      if (isCompactViewport) {
         calendarPanel.style.removeProperty("--calendar-left");
         calendarPanel.style.removeProperty("--calendar-bottom");
         const panelRect = maregramPanel.getBoundingClientRect();
         const bottom = Math.max(8, window.innerHeight - panelRect.top + 3);
         const safeTop = 74;
-        const maxHeight = window.matchMedia("(max-width: 430px)").matches ? 314 : 324;
-        const availableHeight = Math.max(238, panelRect.top - safeTop - 3);
+        const isLandscapeCompact = window.matchMedia("(max-height: 520px) and (orientation: landscape)").matches;
+        const maxHeight = isLandscapeCompact ? 230 : (window.matchMedia("(max-width: 430px)").matches ? 314 : 324);
+        const minHeight = isLandscapeCompact ? 150 : 238;
+        const availableHeight = Math.max(minHeight, panelRect.top - safeTop - 3);
         const height = Math.min(maxHeight, availableHeight);
         calendarPanel.style.setProperty("--calendar-mobile-bottom", `${Math.round(bottom)}px`);
         calendarPanel.style.setProperty("--calendar-mobile-height", `${Math.round(height)}px`);
