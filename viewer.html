@@ -788,15 +788,15 @@
     </label>
     <button id="applyDemButton" class="debug-apply-button" type="button">Charger PMTiles</button>
     <label class="ortho-toggle">
-      <input id="ignOrthoToggle" type="checkbox" checked>
+      <input id="ignOrthoToggle" type="checkbox" checked autocomplete="off">
       <span>IGN</span>
     </label>
     <label class="ortho-toggle">
-      <input id="tideOverlayToggle" type="checkbox" checked>
+      <input id="tideOverlayToggle" type="checkbox" checked autocomplete="off">
       <span>Eau</span>
     </label>
     <label class="ortho-toggle">
-      <input id="tideLandMaskToggle" type="checkbox" checked>
+      <input id="tideLandMaskToggle" type="checkbox" checked autocomplete="off">
       <span>Masque terre marée</span>
     </label>
     <label class="debug-range-control">
@@ -968,6 +968,7 @@
     };
     const demNativeMaxZoom = inferDemNativeMaxZoom();
     const demDebug = pageParams.has("demDebug");
+    const tideOverlayEnabled = pageParams.get("tide") !== "0";
     const tideLandMaskEnabled = pageParams.get("tideMask") !== "0";
     const landMaskUrl = pageParams.get("landMask") || "data/re_landmask.geojson";
     const useDirectPmtilesDem = demSource.type === "pmtiles" && useStaticShom && !tideLandMaskEnabled;
@@ -983,6 +984,7 @@
       demTilesCustomInput.hidden = false;
     }
     demMaxZoomInput.value = String(demNativeMaxZoom);
+    tideOverlayToggle.checked = tideOverlayEnabled;
     tideLandMaskToggle.checked = tideLandMaskEnabled;
     const namedPlaces = {
       type: "FeatureCollection",
