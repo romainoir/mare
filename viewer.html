@@ -777,7 +777,8 @@
       <span>PMTiles</span>
       <select id="demTilesSelect">
         <option value="bathymetrie_aquitaine_1m_512_composite">composite z18</option>
-        <option value="bathymetrie_aquitaine_z15_unmasked">z15 GitHub</option>
+        <option value="bathymetrie_aquitaine_z15_landmasked">z15 GitHub masqué</option>
+        <option value="bathymetrie_aquitaine_z15_unmasked">z15 GitHub non masqué</option>
         <option value="custom">autre...</option>
       </select>
       <input id="demTilesCustomInput" type="text" spellcheck="false" autocomplete="off" placeholder="nom ou URL PMTiles">
@@ -908,7 +909,7 @@
     const shomStaticCache = new Map();
     const localDemTileBase = "http://127.0.0.1:8080";
     const localDefaultDemName = "bathymetrie_aquitaine_1m_512_composite";
-    const pagesDefaultDemName = "bathymetrie_aquitaine_z15_unmasked";
+    const pagesDefaultDemName = "bathymetrie_aquitaine_z15_landmasked";
     const defaultDemName = isLocalRuntime ? localDefaultDemName : pagesDefaultDemName;
     const isHttpUrl = (value) => /^https?:\/\//i.test(value);
     const isPmtilesArchive = (value) => /\.pmtiles(?:$|[?#])/i.test(value);
@@ -954,7 +955,8 @@
     const demSourceMaxZoom = Number(pageParams.get("demSourceMaxZoom")) || 18;
     const knownDemNames = [
       localDefaultDemName,
-      pagesDefaultDemName
+      pagesDefaultDemName,
+      "bathymetrie_aquitaine_z15_unmasked"
     ];
     const inferDemNativeMaxZoomFromValue = (value) => {
       const match = value.match(/(?:^|[_-])z(\d{1,2})(?:[_-]|$)/i);
@@ -972,7 +974,8 @@
     const tideOverlayEnabled = pageParams.get("tide") !== "0";
     const tideLandMaskEnabled = pageParams.get("tideMask") !== "0";
     const landMaskUrl = pageParams.get("landMask") || "data/re_landmask.geojson";
-    const useDirectPmtilesDem = demSource.type === "pmtiles" && useStaticShom && !tideLandMaskEnabled;
+    const demHasPrecomputedLandMask = /(?:^|[_-])landmasked(?:[_-]|$)/i.test(demSelection);
+    const useDirectPmtilesDem = demSource.type === "pmtiles" && useStaticShom && (!tideLandMaskEnabled || demHasPrecomputedLandMask);
     const demTileSize = 512;
     const initialDemSelection = demSelection;
     if (knownDemNames.includes(initialDemSelection)) {

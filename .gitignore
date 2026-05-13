@@ -4,6 +4,7 @@ atlas/
 ATLAS/
 *.pmtiles
 !bathymetrie_aquitaine_z15_unmasked.pmtiles
+!bathymetrie_aquitaine_z15_landmasked.pmtiles
 *.mbtiles
 *.tif
 *.tiff

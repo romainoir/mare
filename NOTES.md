@@ -183,6 +183,13 @@ RGBA PNGs, because the DEM decoder only needs Terrarium RGB values. If the
 runtime masking path fails on a browser, it now fails open and returns the
 unmasked DEM tile instead of making the tide color-relief disappear.
 
+GitHub Pages uses `bathymetrie_aquitaine_z15_landmasked.pmtiles` by default.
+This archive is generated from `bathymetrie_aquitaine_z15_unmasked.pmtiles` plus
+`data/re_landmask.geojson`; masked land pixels are encoded at `12000 m`, which
+places them above the transparent end of the tide `color-relief` expression. The
+default Pages path therefore uses direct `pmtiles://` loading, not
+`masked-dem://`.
+
 When the tide land mask is disabled with `tideMask=0`, GitHub Pages bypasses
 `maskedDemProtocol` for the committed static PMTiles archive and uses the
 official PMTiles MapLibre protocol directly:
