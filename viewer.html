@@ -2096,7 +2096,9 @@
         maxZoom: 16
       }
     }), "top-right");
-    map.addControl(createDebugControl(), "top-right");
+    if (isLocalRuntime) {
+      map.addControl(createDebugControl(), "top-right");
+    }
 
     map.dragRotate.disable();
     map.touchZoomRotate.disableRotation();
