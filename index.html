@@ -2339,7 +2339,7 @@
         },
         paint: {
           "color-relief-opacity": 1,
-          "color-relief-color": tideColorExpression(0),
+          "color-relief-color": tideColorExpression(currentTideDemLevel, tideLayerOpacity),
           "resampling": "nearest"
         }
       });
@@ -2353,10 +2353,11 @@
         },
         paint: {
           "color-relief-opacity": 1,
-          "color-relief-color": tideFoamExpression(0),
+          "color-relief-color": tideFoamExpression(currentTideDemLevel, tideLayerOpacity),
           "resampling": "nearest"
         }
       });
+      setTideLevel(currentTideDemLevel, currentTideHeight);
 
       map.addSource("named-places", {
         type: "geojson",
