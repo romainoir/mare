@@ -459,8 +459,48 @@
     }
 
     @media (max-width: 700px) {
+      .app-logo {
+        top: 8px;
+        left: 8px;
+        width: clamp(78px, 22vw, 116px);
+        max-height: 70px;
+      }
+
+      .maregram-panel {
+        bottom: 8px;
+        gap: 6px;
+        width: calc(100% - 16px);
+        max-height: min(48vh, 290px);
+        box-sizing: border-box;
+        padding: 8px;
+        overflow: auto;
+        font-size: 12px;
+        overscroll-behavior: contain;
+      }
+
       .tide-events {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(92px, 1fr));
+        gap: 5px;
+        overflow-x: auto;
+        padding-bottom: 1px;
+        scrollbar-width: thin;
+      }
+
+      .tide-event {
+        padding: 5px 6px;
+        border-radius: 5px;
+      }
+
+      .tide-event-type {
+        font-size: 9px;
+      }
+
+      .tide-event-time {
+        font-size: 14px;
+      }
+
+      .tide-event-height {
+        font-size: 11px;
       }
 
       .maregram-header {
@@ -478,8 +518,66 @@
         grid-template-columns: 32px 1fr 32px;
       }
 
+      .date-step,
+      .date-button {
+        min-height: 30px;
+      }
+
+      .date-button {
+        min-width: 0;
+        padding: 0 8px;
+      }
+
       .maregram-coeff {
         margin-left: auto;
+        font-size: 17px;
+      }
+
+      .maregram-readout {
+        gap: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .maregram-status {
+        display: none;
+      }
+
+      .maregram-chart {
+        height: 92px;
+      }
+
+      .date-calendar {
+        position: fixed;
+        left: 8px;
+        right: 8px;
+        bottom: 148px;
+        width: auto;
+        height: min(390px, calc(100dvh - 170px));
+      }
+    }
+
+    @media (max-width: 430px) {
+      .maregram-panel {
+        max-height: min(46vh, 255px);
+      }
+
+      .maregram-chart {
+        height: 78px;
+      }
+
+      .tide-events {
+        grid-template-columns: repeat(4, minmax(82px, 1fr));
+      }
+
+      .tide-event {
+        padding: 4px 5px;
+      }
+
+      .date-calendar {
+        bottom: 132px;
+        height: min(360px, calc(100dvh - 150px));
       }
     }
   </style>
