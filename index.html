@@ -808,10 +808,11 @@
   <div id="map"></div>
   <script type="module">
     import * as maplibregl from "https://unpkg.com/maplibre-gl@6.0.0-8/dist/maplibre-gl.mjs";
-    import { PMTiles, Protocol } from "https://unpkg.com/pmtiles@3.2.1/dist/index.js";
+    import { Protocol } from "https://unpkg.com/pmtiles@3.2.1/dist/index.js";
 
     maplibregl.setWorkerUrl(new URL("vendor/maplibre-gl-worker-6.0.0-8.mjs", window.location.href).href);
-    maplibregl.addProtocol("pmtiles", new Protocol().tile);
+    const pmtilesProtocol = new Protocol();
+    maplibregl.addProtocol("pmtiles", pmtilesProtocol.tile);
 
     const scaledAlpha = (value, multiplier) =>
       Math.max(0, Math.min(1, value * multiplier)).toFixed(3);
@@ -1337,21 +1338,11 @@
       };
     };
 
-    let demArchive = null;
-    const demPmtilesArchive = () => {
-      demArchive ??= new PMTiles(demSource.url);
-      return demArchive;
-    };
-
     const fetchDemTileData = async (nativeTile, abortController) => {
       if (demSource.type === "pmtiles") {
-        const tile = await demPmtilesArchive().getZxy(
-          nativeTile.z,
-          nativeTile.x,
-          nativeTile.y,
-          abortController?.signal
-        );
-        return tile ? { status: 200, data: tile.data } : { status: 404, data: null };
+        const tileUrl = `pmtiles://${demSource.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png`;
+        const tile = await pmtilesProtocol.tilev4({ url: tileUrl }, abortController);
+        return tile.data ? { status: 200, data: tile.data } : { status: 404, data: null };
       }
 
       const tileUrl = `${demSource.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png?v=${demTileVersion}`;
