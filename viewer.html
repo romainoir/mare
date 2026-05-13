@@ -807,7 +807,7 @@
     const demDebug = pageParams.has("demDebug");
     const tideLandMaskEnabled = pageParams.get("tideMask") !== "0";
     const landMaskUrl = pageParams.get("landMask") || "data/re_landmask.geojson";
-    const useDirectPmtilesDem = demSource.type === "pmtiles" && useStaticShom;
+    const useDirectPmtilesDem = demSource.type === "pmtiles" && useStaticShom && !tideLandMaskEnabled;
     const demTileSize = 512;
     const initialDemSelection = demSelection;
     if (knownDemNames.includes(initialDemSelection)) {
