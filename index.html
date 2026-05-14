@@ -1335,7 +1335,6 @@
       <span>PMTiles</span>
       <select id="demTilesSelect">
         <option value="bathymetrie_aquitaine_1m_512_composite">composite z18</option>
-        <option value="bathymetrie_aquitaine_z15_landmasked">z15 GitHub masqué</option>
         <option value="bathymetrie_aquitaine_z15_unmasked">z15 GitHub non masqué</option>
         <option value="custom">autre...</option>
       </select>
@@ -1353,10 +1352,6 @@
     <label class="ortho-toggle">
       <input id="tideOverlayToggle" type="checkbox" checked autocomplete="off">
       <span>Eau</span>
-    </label>
-    <label class="ortho-toggle">
-      <input id="tideLandMaskToggle" type="checkbox" checked autocomplete="off">
-      <span>Masque terre marée</span>
     </label>
     <label class="debug-range-control">
       <span>Opacité eau</span>
@@ -1483,7 +1478,6 @@
     const applyDemButton = document.getElementById("applyDemButton");
     const ignOrthoToggle = document.getElementById("ignOrthoToggle");
     const tideOverlayToggle = document.getElementById("tideOverlayToggle");
-    const tideLandMaskToggle = document.getElementById("tideLandMaskToggle");
     const tideOpacityRange = document.getElementById("tideOpacityRange");
     const tideOpacityValue = document.getElementById("tideOpacityValue");
     const observationDialog = document.getElementById("observationDialog");
@@ -1524,7 +1518,7 @@
     const shomStaticCache = new Map();
     const localDemTileBase = "http://127.0.0.1:8080";
     const localDefaultDemName = "bathymetrie_aquitaine_1m_512_composite";
-    const pagesDefaultDemName = "bathymetrie_aquitaine_z15_landmasked";
+    const pagesDefaultDemName = "bathymetrie_aquitaine_z15_unmasked";
     const defaultDemName = isLocalRuntime ? localDefaultDemName : pagesDefaultDemName;
     const isHttpUrl = (value) => /^https?:\/\//i.test(value);
     const isPmtilesArchive = (value) => /\.pmtiles(?:$|[?#])/i.test(value);
@@ -1566,7 +1560,6 @@
     const demSelection = normalizeDemSelection(requestedDemTileBase || defaultDemName);
     const demSource = resolveDemSource(requestedDemTileBase || defaultDemName);
     const demTileVersion = pageParams.get("demVersion") ?? demSelection;
-    const demNativeMinZoom = 11;
     const demSourceMaxZoom = Number(pageParams.get("demSourceMaxZoom")) || 18;
     const knownDemNames = [
       localDefaultDemName,
@@ -1587,24 +1580,7 @@
     const demNativeMaxZoom = inferDemNativeMaxZoom();
     const demDebug = pageParams.has("demDebug");
     const tideOverlayEnabled = pageParams.get("tide") !== "0";
-    const tideLandMaskEnabled = pageParams.get("tideMask") !== "0";
-    const landMaskUrl = pageParams.get("landMask") || "data/re_landmask.geojson";
-    const demHasPrecomputedLandMask = /(?:^|[_-])landmasked(?:[_-]|$)/i.test(demSelection);
-    const demSamplingSelection = demHasPrecomputedLandMask
-      ? demSelection.replace(/landmasked/i, "unmasked")
-      : demSelection;
-    const demSamplingSource = demHasPrecomputedLandMask
-      ? resolveDemSource(isLocalRuntime && !isHttpUrl(demSamplingSelection)
-        ? `${demSamplingSelection}.pmtiles`
-        : demSamplingSelection)
-      : demSource;
-    const demSamplingNativeMaxZoom = demHasPrecomputedLandMask
-      ? inferDemNativeMaxZoomFromValue(demSamplingSelection)
-      : demNativeMaxZoom;
-    const demSamplingTileVersion = pageParams.get("demSamplingVersion") ?? demSamplingSelection;
-    const useDirectDemTiles =
-      demSource.type === "tile-endpoint" ||
-      (demSource.type === "pmtiles" && useStaticShom && (!tideLandMaskEnabled || demHasPrecomputedLandMask));
+    const activeDemMaxZoom = demSource.type === "tile-endpoint" ? demSourceMaxZoom : demNativeMaxZoom;
     const demTileSize = 512;
     const initialDemSelection = demSelection;
     if (knownDemNames.includes(initialDemSelection)) {
@@ -1618,10 +1594,7 @@
     }
     demMaxZoomInput.value = String(demNativeMaxZoom);
     tideOverlayToggle.checked = tideOverlayEnabled;
-    tideLandMaskToggle.checked = tideLandMaskEnabled;
-    const landMaskElevation = 12000;
-    const noDataOceanElevation = -20;
-    const landMaskTileCache = new Map();
+    const demMaxValidElevation = 6000;
     const monthCoefficientCache = new Map();
     const terrainQuerySourceId = "terrain-query-bathymetrie";
     let terrainQueryReadyPromise = null;
@@ -1632,7 +1605,6 @@
       "SAINT-MARTIN_DE_RE": -3.504
     };
     let harbors = [];
-    let landMaskPromise = null;
     let stationManuallySelected = false;
     let calendarMonthDate = null;
     let calendarRenderToken = 0;
@@ -1649,7 +1621,7 @@
     let longPressTimer = null;
     let longPressStart = null;
 
-    const fallbackStations = [
+    const bundledStations = [
       { cst: "SAINT-MARTIN_DE_RE", toponyme: "Saint-Martin-de-Re (Ile de Re)", lat: 46.208, lon: -1.3655, ut: 10 }
     ];
 
@@ -1708,366 +1680,14 @@
       return node;
     };
 
-    const createRasterCanvas = (width, height) => {
-      if (typeof OffscreenCanvas !== "undefined" && OffscreenCanvas.prototype.convertToBlob) {
-        return new OffscreenCanvas(width, height);
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      return canvas;
-    };
-
-    const createDomCanvas = (width, height) => {
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      return canvas;
-    };
-
-    const encodeTerrariumColor = (elevation) => {
-      const encoded = Math.round((elevation + 32768) * 256);
-      return [(encoded >> 16) & 255, (encoded >> 8) & 255, encoded & 255];
-    };
-
-    const landMaskColor = encodeTerrariumColor(landMaskElevation);
-    const noDataOceanColor = encodeTerrariumColor(noDataOceanElevation);
     const demSampleCache = new Map();
     let observationRenderToken = 0;
     let observationLibraryPage = 0;
 
-    const decodeTerrariumColor = (red, green, blue) =>
-      (red * 256 + green + blue / 256) - 32768;
-
     const isValidDemElevation = (elevation) =>
       Number.isFinite(elevation) &&
       elevation > -32000 &&
-      elevation < landMaskElevation / 2;
-
-    const makeCrcTable = () => {
-      const table = new Uint32Array(256);
-      for (let n = 0; n < 256; n += 1) {
-        let c = n;
-        for (let k = 0; k < 8; k += 1) {
-          c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-        }
-        table[n] = c >>> 0;
-      }
-      return table;
-    };
-
-    const crcTable = makeCrcTable();
-
-    const crc32 = (type, data) => {
-      let crc = 0xffffffff;
-      for (let index = 0; index < type.length; index += 1) {
-        crc = crcTable[(crc ^ type.charCodeAt(index)) & 255] ^ (crc >>> 8);
-      }
-      for (let index = 0; index < data.length; index += 1) {
-        crc = crcTable[(crc ^ data[index]) & 255] ^ (crc >>> 8);
-      }
-      return (crc ^ 0xffffffff) >>> 0;
-    };
-
-    const adler32 = (data) => {
-      let a = 1;
-      let b = 0;
-      for (let index = 0; index < data.length; index += 1) {
-        a = (a + data[index]) % 65521;
-        b = (b + a) % 65521;
-      }
-      return ((b << 16) | a) >>> 0;
-    };
-
-    const storedDeflate = (data) => {
-      const blocks = Math.ceil(data.length / 65535);
-      const output = new Uint8Array(2 + data.length + blocks * 5 + 4);
-      let offset = 0;
-      output[offset++] = 0x78;
-      output[offset++] = 0x01;
-      for (let inputOffset = 0; inputOffset < data.length;) {
-        const length = Math.min(65535, data.length - inputOffset);
-        const finalBlock = inputOffset + length >= data.length;
-        output[offset++] = finalBlock ? 1 : 0;
-        output[offset++] = length & 255;
-        output[offset++] = (length >> 8) & 255;
-        output[offset++] = (~length) & 255;
-        output[offset++] = ((~length) >> 8) & 255;
-        output.set(data.subarray(inputOffset, inputOffset + length), offset);
-        offset += length;
-        inputOffset += length;
-      }
-      const checksum = adler32(data);
-      output[offset++] = (checksum >>> 24) & 255;
-      output[offset++] = (checksum >>> 16) & 255;
-      output[offset++] = (checksum >>> 8) & 255;
-      output[offset++] = checksum & 255;
-      return output;
-    };
-
-    const writePngChunk = (target, offset, type, data) => {
-      const dataLength = data.length;
-      target[offset++] = (dataLength >>> 24) & 255;
-      target[offset++] = (dataLength >>> 16) & 255;
-      target[offset++] = (dataLength >>> 8) & 255;
-      target[offset++] = dataLength & 255;
-      for (let index = 0; index < type.length; index += 1) {
-        target[offset++] = type.charCodeAt(index);
-      }
-      target.set(data, offset);
-      offset += dataLength;
-      const crc = crc32(type, data);
-      target[offset++] = (crc >>> 24) & 255;
-      target[offset++] = (crc >>> 16) & 255;
-      target[offset++] = (crc >>> 8) & 255;
-      target[offset++] = crc & 255;
-      return offset;
-    };
-
-    const imageDataToRgbPngBuffer = (imageData) => {
-      const { width, height, data } = imageData;
-      const raw = new Uint8Array((width * 3 + 1) * height);
-      let rawOffset = 0;
-      let imageOffset = 0;
-      for (let y = 0; y < height; y += 1) {
-        raw[rawOffset++] = 0;
-        for (let x = 0; x < width; x += 1) {
-          raw[rawOffset++] = data[imageOffset++];
-          raw[rawOffset++] = data[imageOffset++];
-          raw[rawOffset++] = data[imageOffset++];
-          imageOffset += 1;
-        }
-      }
-
-      const ihdr = new Uint8Array(13);
-      ihdr[0] = (width >>> 24) & 255;
-      ihdr[1] = (width >>> 16) & 255;
-      ihdr[2] = (width >>> 8) & 255;
-      ihdr[3] = width & 255;
-      ihdr[4] = (height >>> 24) & 255;
-      ihdr[5] = (height >>> 16) & 255;
-      ihdr[6] = (height >>> 8) & 255;
-      ihdr[7] = height & 255;
-      ihdr[8] = 8;
-      ihdr[9] = 2;
-      ihdr[10] = 0;
-      ihdr[11] = 0;
-      ihdr[12] = 0;
-
-      const idat = storedDeflate(raw);
-      const iend = new Uint8Array();
-      const signature = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
-      const totalLength = signature.length + 12 + ihdr.length + 12 + idat.length + 12;
-      const png = new Uint8Array(totalLength);
-      let offset = 0;
-      png.set(signature, offset);
-      offset += signature.length;
-      offset = writePngChunk(png, offset, "IHDR", ihdr);
-      offset = writePngChunk(png, offset, "IDAT", idat);
-      writePngChunk(png, offset, "IEND", iend);
-      return png.buffer;
-    };
-
-    const toTransferableBytes = (buffer) => {
-      const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-      return new Uint8Array(bytes.slice(0));
-    };
-
-    const decodeRasterImage = async (buffer, type = "image/png") => {
-      const blob = new Blob([buffer], { type });
-      if (typeof createImageBitmap === "function") {
-        try {
-          const bitmap = await createImageBitmap(blob);
-          return {
-            image: bitmap,
-            close: () => bitmap.close?.()
-          };
-        } catch {
-          // Safari can expose createImageBitmap but fail on PNG blobs.
-        }
-      }
-
-      const objectUrl = URL.createObjectURL(blob);
-      try {
-        const image = new Image();
-        image.decoding = "async";
-        const loaded = new Promise((resolve, reject) => {
-          image.onload = () => resolve();
-          image.onerror = () => reject(new Error("Unable to decode raster image"));
-        });
-        image.src = objectUrl;
-        await loaded;
-        return {
-          image,
-          close: () => URL.revokeObjectURL(objectUrl)
-        };
-      } catch (error) {
-        URL.revokeObjectURL(objectUrl);
-        throw error;
-      }
-    };
-
-    const noDataOceanTileBuffer = async (z, x, y) => {
-      const canvas = createRasterCanvas(demTileSize, demTileSize);
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      const imageData = context.createImageData(demTileSize, demTileSize);
-      const data = imageData.data;
-      for (let index = 0; index < data.length; index += 4) {
-        data[index] = noDataOceanColor[0];
-        data[index + 1] = noDataOceanColor[1];
-        data[index + 2] = noDataOceanColor[2];
-        data[index + 3] = 255;
-      }
-
-      if (tideLandMaskEnabled) {
-        const maskData = (await renderLandMaskImageData(z, x, y, demTileSize)).data;
-        for (let index = 0; index < data.length; index += 4) {
-          if (maskData[index + 3] > 0) {
-            data[index] = landMaskColor[0];
-            data[index + 1] = landMaskColor[1];
-            data[index + 2] = landMaskColor[2];
-          }
-        }
-      }
-      context.putImageData(imageData, 0, 0);
-      return imageDataToRgbPngBuffer(imageData);
-    };
-
-    const loadLandMask = () => {
-      landMaskPromise ??= fetch(landMaskUrl)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`Land mask HTTP ${response.status}`);
-          }
-          return response.json();
-        });
-      return landMaskPromise;
-    };
-
-    const lonLatToTilePixel = ([lon, lat], z, x, y, size) => {
-      const scale = 2 ** z;
-      const sinLat = Math.sin((lat * Math.PI) / 180);
-      const worldX = ((lon + 180) / 360) * scale;
-      const worldY = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale;
-      return [(worldX - x) * size, (worldY - y) * size];
-    };
-
-    const drawPolygonMask = (context, coordinates, z, x, y, size) => {
-      context.beginPath();
-      for (const ring of coordinates) {
-        ring.forEach((coordinate, index) => {
-          const [px, py] = lonLatToTilePixel(coordinate, z, x, y, size);
-          if (index === 0) {
-            context.moveTo(px, py);
-          } else {
-            context.lineTo(px, py);
-          }
-        });
-        context.closePath();
-      }
-      context.fill("evenodd");
-    };
-
-    const renderLandMaskImageData = async (z, x, y, size) => {
-      const landMask = await loadLandMask();
-      const canvas = createRasterCanvas(size, size);
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      context.fillStyle = "#000";
-      for (const feature of landMask.features ?? []) {
-        const { type, coordinates } = feature.geometry ?? {};
-        if (type === "Polygon") {
-          drawPolygonMask(context, coordinates, z, x, y, size);
-        } else if (type === "MultiPolygon") {
-          for (const polygon of coordinates) {
-            drawPolygonMask(context, polygon, z, x, y, size);
-          }
-        }
-      }
-
-      return context.getImageData(0, 0, size, size);
-    };
-
-    const parseMaskedDemUrl = (url) => {
-      const match = url.match(/^masked-dem:\/\/[^/]+\/(\d+)\/(\d+)\/(\d+)(?:\.png)?(?:\?.*)?$/);
-      if (!match) {
-        throw new Error(`Invalid masked DEM URL: ${url}`);
-      }
-      return {
-        z: Number(match[1]),
-        x: Number(match[2]),
-        y: Number(match[3])
-      };
-    };
-
-    const nativeDemTileForRequest = (z, x, y, nativeMaxZoom = demNativeMaxZoom) => {
-      if (z <= nativeMaxZoom) {
-        return { z, x, y, crop: null, overzoomDelta: 0 };
-      }
-      const zoomDelta = z - nativeMaxZoom;
-      const scale = 2 ** zoomDelta;
-      const cropSize = demTileSize / scale;
-      return {
-        z: nativeMaxZoom,
-        x: Math.floor(x / scale),
-        y: Math.floor(y / scale),
-        overzoomDelta: zoomDelta,
-        crop: {
-          x: (x % scale) * cropSize,
-          y: (y % scale) * cropSize,
-          size: cropSize
-        }
-      };
-    };
-
-    const fetchDemTileData = async (
-      nativeTile,
-      abortController,
-      source = demSource,
-      tileVersion = demTileVersion
-    ) => {
-      if (source.type === "pmtiles") {
-        const tileUrl = `pmtiles://${source.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png`;
-        const tile = await pmtilesProtocol.tilev4({ url: tileUrl }, abortController);
-        return tile.data ? { status: 200, data: tile.data } : { status: 404, data: null };
-      }
-
-      const tileUrl = `${source.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png?v=${tileVersion}`;
-      const response = await fetch(tileUrl, { signal: abortController?.signal });
-      if (!response.ok) {
-        return { status: response.status, data: null };
-      }
-      return { status: response.status, data: await response.arrayBuffer() };
-    };
-
-    const fetchDemTileWithParentFallback = async (
-      z,
-      x,
-      y,
-      abortController,
-      source = demSource,
-      nativeMaxZoom = demNativeMaxZoom,
-      tileVersion = demTileVersion
-    ) => {
-      const firstZoom = Math.min(z, nativeMaxZoom);
-      for (let candidateZoom = firstZoom; candidateZoom >= demNativeMinZoom; candidateZoom -= 1) {
-        const nativeTile = nativeDemTileForRequest(z, x, y, candidateZoom);
-        const tile = await fetchDemTileData(nativeTile, abortController, source, tileVersion);
-        if (tile.status === 204 || tile.status === 404) {
-          if (demDebug) {
-            console.info("DEM tile miss", { requested: { z, x, y }, nativeTile, status: tile.status });
-          }
-          continue;
-        }
-        if (tile.status < 200 || tile.status >= 300) {
-          throw new Error(`DEM tile HTTP ${tile.status}`);
-        }
-        if (demDebug) {
-          console.info("DEM tile hit", { requested: { z, x, y }, nativeTile, source: source.type });
-        }
-        return { nativeTile, data: tile.data };
-      }
-      return null;
-    };
+      elevation < demMaxValidElevation;
 
     const ignOrthoTiles = () => [
       "https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2011-2015&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
@@ -2103,36 +1723,8 @@
       };
     };
 
-    const samplingBathymetrySourceOptions = () =>
-      directDemSourceOptions(
-        demSamplingSource,
-        demSamplingTileVersion,
-        demSamplingSource.type === "tile-endpoint" ? demSourceMaxZoom : demSamplingNativeMaxZoom
-      );
-
-    const bathymetrySourceOptions = () => {
-      if (useDirectDemTiles) {
-        return directDemSourceOptions(
-          demSource,
-          demTileVersion,
-          demSource.type === "tile-endpoint" ? demSourceMaxZoom : demNativeMaxZoom
-        );
-      }
-
-      const maskedSourceMaxZoom = demSource.type === "pmtiles" ? demNativeMaxZoom : demSourceMaxZoom;
-      return {
-        type: "raster-dem",
-        bounds: bathymetryBounds,
-        minzoom: 11,
-        encoding: "terrarium",
-        tileSize: demTileSize,
-        tiles: [
-          "masked-dem://bathymetrie/{z}/{x}/{y}.png"
-        ],
-        // Source maxzoom is the native DEM zoom. MapLibre still overzooms this above Z15/Z18.
-        maxzoom: maskedSourceMaxZoom
-      };
-    };
+    const bathymetrySourceOptions = () =>
+      directDemSourceOptions(demSource, demTileVersion, activeDemMaxZoom);
 
     const waitForTerrainQueryIdle = (queryMap, timeoutMs = 3500) => new Promise((resolve) => {
       let settled = false;
@@ -2173,14 +1765,14 @@
             layers: []
           },
           center: mapInitialCenter,
-          zoom: Math.min(demSamplingNativeMaxZoom, 15),
+          zoom: Math.min(activeDemMaxZoom, 15),
           interactive: false,
           attributionControl: false,
           fadeDuration: 0
         });
 
         queryMap.on("load", () => {
-          queryMap.addSource(terrainQuerySourceId, samplingBathymetrySourceOptions());
+          queryMap.addSource(terrainQuerySourceId, bathymetrySourceOptions());
           queryMap.setTerrain({ source: terrainQuerySourceId, exaggeration: 1 });
           resolve(queryMap);
         });
@@ -2203,7 +1795,7 @@
             const queryMap = await ensureTerrainQueryMap();
             queryMap.jumpTo({
               center: [lon, lat],
-              zoom: Math.min(demSamplingNativeMaxZoom, 18),
+              zoom: Math.min(activeDemMaxZoom, 18),
               bearing: 0,
               pitch: 0
             });
@@ -2224,78 +1816,6 @@
       terrainQueryQueue = task.catch(() => {});
       return task;
     };
-
-    const maskedDemProtocol = async (params, abortController) => {
-      const { z, x, y } = parseMaskedDemUrl(params.url);
-      const cacheKey = `${demSource.type}/${demSource.url}/${demTileVersion}/${demNativeMaxZoom}/${z}/${x}/${y}`;
-      const cached = landMaskTileCache.get(cacheKey);
-      if (cached) {
-        return { data: new Uint8Array(cached.slice(0)) };
-      }
-
-      const tileResult = await fetchDemTileWithParentFallback(z, x, y, abortController);
-      if (!tileResult) {
-        const emptyTile = await noDataOceanTileBuffer(z, x, y);
-        landMaskTileCache.set(cacheKey, emptyTile);
-        return { data: new Uint8Array(emptyTile.slice(0)) };
-      }
-
-      const { nativeTile, data: sourceBuffer } = tileResult;
-      let raster = null;
-      try {
-        raster = await decodeRasterImage(sourceBuffer);
-        const canvas = createRasterCanvas(demTileSize, demTileSize);
-        const context = canvas.getContext("2d", { willReadFrequently: true });
-        context.imageSmoothingEnabled = false;
-        if (nativeTile.crop) {
-          context.drawImage(
-            raster.image,
-            nativeTile.crop.x,
-            nativeTile.crop.y,
-            nativeTile.crop.size,
-            nativeTile.crop.size,
-            0,
-            0,
-            demTileSize,
-            demTileSize
-          );
-        } else {
-          context.drawImage(raster.image, 0, 0, demTileSize, demTileSize);
-        }
-
-        const imageData = context.getImageData(0, 0, demTileSize, demTileSize);
-        const maskData = tideLandMaskEnabled ? (await renderLandMaskImageData(z, x, y, demTileSize)).data : null;
-        const data = imageData.data;
-        for (let index = 0; index < data.length; index += 4) {
-          if (data[index + 3] < 128) {
-            data[index] = noDataOceanColor[0];
-            data[index + 1] = noDataOceanColor[1];
-            data[index + 2] = noDataOceanColor[2];
-            data[index + 3] = 255;
-          }
-          if (maskData && maskData[index + 3] > 0) {
-            data[index] = landMaskColor[0];
-            data[index + 1] = landMaskColor[1];
-            data[index + 2] = landMaskColor[2];
-            data[index + 3] = 255;
-          }
-        }
-
-        const maskedBuffer = imageDataToRgbPngBuffer(imageData);
-        landMaskTileCache.set(cacheKey, maskedBuffer);
-        return { data: toTransferableBytes(maskedBuffer) };
-      } catch (error) {
-        console.warn("Masked DEM failed, using unmasked tile", error);
-        if (!nativeTile.crop) {
-          return { data: toTransferableBytes(sourceBuffer) };
-        }
-        throw error;
-      } finally {
-        raster?.close?.();
-      }
-    };
-
-    maplibregl.addProtocol("masked-dem", maskedDemProtocol);
 
     const setTideLevel = (level, tideHeight = currentTideHeight) => {
       currentTideDemLevel = level;
@@ -2353,17 +1873,6 @@
       }
 
       url.searchParams.set("v", `dem-${Date.now()}`);
-      window.location.href = url.toString();
-    };
-
-    const applyTideLandMaskSelection = () => {
-      const url = new URL(window.location.href);
-      if (tideLandMaskToggle.checked) {
-        url.searchParams.delete("tideMask");
-      } else {
-        url.searchParams.set("tideMask", "0");
-      }
-      url.searchParams.set("v", `mask-${Date.now()}`);
       window.location.href = url.toString();
     };
 
@@ -2486,48 +1995,11 @@
 
     const normalizeWaterState = (value) => value === "wet" ? "wet" : "dry";
 
-    const lonLatToTileCoordinate = (lon, lat, z) => {
-      const scale = 2 ** z;
-      const sinLat = Math.sin((lat * Math.PI) / 180);
-      return {
-        x: ((lon + 180) / 360) * scale,
-        y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale
-      };
-    };
-
     const isInsideBathymetryBounds = (lon, lat) =>
       lon >= bathymetryBounds[0] &&
       lon <= bathymetryBounds[2] &&
       lat >= bathymetryBounds[1] &&
       lat <= bathymetryBounds[3];
-
-    const sampleElevationFromImageData = (imageData, x, y) => {
-      const data = imageData.data;
-      const radius = 2;
-      let nearest = null;
-      for (let dy = -radius; dy <= radius; dy += 1) {
-        for (let dx = -radius; dx <= radius; dx += 1) {
-          const sampleX = x + dx;
-          const sampleY = y + dy;
-          if (sampleX < 0 || sampleX >= imageData.width || sampleY < 0 || sampleY >= imageData.height) {
-            continue;
-          }
-          const index = (sampleY * imageData.width + sampleX) * 4;
-          if (data[index + 3] < 128) {
-            continue;
-          }
-          const elevation = decodeTerrariumColor(data[index], data[index + 1], data[index + 2]);
-          if (!isValidDemElevation(elevation)) {
-            continue;
-          }
-          const distance = dx * dx + dy * dy;
-          if (!nearest || distance < nearest.distance) {
-            nearest = { elevation, distance };
-          }
-        }
-      }
-      return nearest?.elevation ?? null;
-    };
 
     const sampleDemElevation = async (observation) => {
       const lon = Number(observation.lon);
@@ -2536,69 +2008,14 @@
         return null;
       }
 
-      const cacheKey = `${demSamplingSource.type}/${demSamplingSource.url}/${demSamplingTileVersion}/${demSamplingNativeMaxZoom}/${lon.toFixed(7)}/${lat.toFixed(7)}`;
+      const cacheKey = `${demSource.type}/${demSource.url}/${demTileVersion}/${activeDemMaxZoom}/${lon.toFixed(7)}/${lat.toFixed(7)}`;
       if (demSampleCache.has(cacheKey)) {
         return demSampleCache.get(cacheKey);
       }
 
       const terrainElevation = await queryTerrainElevationWithMapLibre(lon, lat);
-      if (terrainElevation != null) {
-        demSampleCache.set(cacheKey, terrainElevation);
-        return terrainElevation;
-      }
-
-      const tileCoordinate = lonLatToTileCoordinate(lon, lat, demSamplingNativeMaxZoom);
-      const tileResult = await fetchDemTileWithParentFallback(
-        demSamplingNativeMaxZoom,
-        Math.floor(tileCoordinate.x),
-        Math.floor(tileCoordinate.y),
-        null,
-        demSamplingSource,
-        demSamplingNativeMaxZoom,
-        demSamplingTileVersion
-      );
-      if (!tileResult) {
-        if (demDebug) {
-          console.info("DEM sample unavailable: no tile", { lon, lat, tileCoordinate });
-        }
-        demSampleCache.set(cacheKey, null);
-        return null;
-      }
-
-      let raster = null;
-      try {
-        raster = await decodeRasterImage(tileResult.data);
-        const canvas = createDomCanvas(demTileSize, demTileSize);
-        const context = canvas.getContext("2d", { willReadFrequently: true });
-        if (!context) {
-          demSampleCache.set(cacheKey, null);
-          return null;
-        }
-        context.imageSmoothingEnabled = false;
-        context.drawImage(raster.image, 0, 0, demTileSize, demTileSize);
-        const [pixelX, pixelY] = lonLatToTilePixel(
-          [lon, lat],
-          tileResult.nativeTile.z,
-          tileResult.nativeTile.x,
-          tileResult.nativeTile.y,
-          demTileSize
-        );
-        const x = Math.max(0, Math.min(demTileSize - 1, Math.floor(pixelX)));
-        const y = Math.max(0, Math.min(demTileSize - 1, Math.floor(pixelY)));
-        const imageData = context.getImageData(0, 0, demTileSize, demTileSize);
-        const elevation = sampleElevationFromImageData(imageData, x, y);
-        if (demDebug) {
-          console.info("DEM sample", { lon, lat, nativeTile: tileResult.nativeTile, pixel: { x, y }, elevation });
-        }
-        demSampleCache.set(cacheKey, elevation);
-        return elevation;
-      } catch (error) {
-        console.warn("Unable to sample DEM elevation", error);
-        demSampleCache.set(cacheKey, null);
-        return null;
-      } finally {
-        raster?.close?.();
-      }
+      demSampleCache.set(cacheKey, terrainElevation);
+      return terrainElevation;
     };
 
     const fishingScore = (observation, demElevation, point) => {
@@ -3720,7 +3137,7 @@
     };
 
     const loadStations = async () => {
-      populateStations(fallbackStations);
+      populateStations(bundledStations);
       if (useStaticShom) {
         return;
       }
@@ -4035,7 +3452,6 @@
     prevDay.addEventListener("click", () => shiftTideDate(-1));
     nextDay.addEventListener("click", () => shiftTideDate(1));
     applyDemButton.addEventListener("click", applyDemSelection);
-    tideLandMaskToggle.addEventListener("change", applyTideLandMaskSelection);
     demTilesSelect.addEventListener("change", () => {
       const isCustomDem = demTilesSelect.value === "custom";
       demTilesCustomInput.hidden = !isCustomDem;
@@ -4181,14 +3597,14 @@
     });
 
     map.on("load", async () => {
-      map.addSource("masked-bathymetrie", bathymetrySourceOptions());
+      map.addSource("bathymetrie", bathymetrySourceOptions());
 
       addIgnOrthoSourceAndLayer();
 
       map.addLayer({
         id: "tide-overlay",
         type: "color-relief",
-        source: "masked-bathymetrie",
+        source: "bathymetrie",
         layout: {
           visibility: tideOverlayToggle.checked ? "visible" : "none"
         },
@@ -4202,7 +3618,7 @@
       map.addLayer({
         id: "tide-foam",
         type: "color-relief",
-        source: "masked-bathymetrie",
+        source: "bathymetrie",
         layout: {
           visibility: tideOverlayToggle.checked ? "visible" : "none"
         },
