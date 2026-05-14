@@ -1336,6 +1336,7 @@
       <select id="demTilesSelect">
         <option value="bathymetrie_aquitaine_1m_512_composite">composite z18</option>
         <option value="bathymetrie_aquitaine_z15_unmasked">z15 GitHub non masqué</option>
+        <option value="bathymetrie_aquitaine_z15_landmasked">z15 GitHub masqué terre</option>
         <option value="custom">autre...</option>
       </select>
       <input id="demTilesCustomInput" type="text" spellcheck="false" autocomplete="off" placeholder="nom ou URL PMTiles">
@@ -1512,6 +1513,7 @@
     };
     const pageParams = new URLSearchParams(window.location.search);
     const requestedDemTileBase = pageParams.get("dem");
+    const requestedTideReliefDem = pageParams.get("tideDem");
     const isLocalRuntime = ["", "localhost", "127.0.0.1"].includes(window.location.hostname);
     const useStaticShom = pageParams.get("tideSource") !== "proxy";
     const shomProxyBase = "http://127.0.0.1:8002";
@@ -1519,6 +1521,7 @@
     const localDemTileBase = "http://127.0.0.1:8080";
     const localDefaultDemName = "bathymetrie_aquitaine_1m_512_composite";
     const pagesDefaultDemName = "bathymetrie_aquitaine_z15_unmasked";
+    const pagesTideReliefDemName = "bathymetrie_aquitaine_z15_landmasked";
     const defaultDemName = isLocalRuntime ? localDefaultDemName : pagesDefaultDemName;
     const isHttpUrl = (value) => /^https?:\/\//i.test(value);
     const isPmtilesArchive = (value) => /\.pmtiles(?:$|[?#])/i.test(value);
@@ -1559,11 +1562,17 @@
     };
     const demSelection = normalizeDemSelection(requestedDemTileBase || defaultDemName);
     const demSource = resolveDemSource(requestedDemTileBase || defaultDemName);
+    const tideReliefSelection = normalizeDemSelection(
+      requestedTideReliefDem || (isLocalRuntime ? requestedDemTileBase || defaultDemName : pagesTideReliefDemName)
+    );
+    const tideReliefSource = resolveDemSource(tideReliefSelection || defaultDemName);
     const demTileVersion = pageParams.get("demVersion") ?? demSelection;
+    const tideReliefTileVersion = pageParams.get("tideDemVersion") ?? tideReliefSelection;
     const demSourceMaxZoom = Number(pageParams.get("demSourceMaxZoom")) || 18;
     const knownDemNames = [
       localDefaultDemName,
       pagesDefaultDemName,
+      pagesTideReliefDemName,
       "bathymetrie_aquitaine_z15_unmasked"
     ];
     const inferDemNativeMaxZoomFromValue = (value) => {
@@ -1581,6 +1590,9 @@
     const demDebug = pageParams.has("demDebug");
     const tideOverlayEnabled = pageParams.get("tide") !== "0";
     const activeDemMaxZoom = demSource.type === "tile-endpoint" ? demSourceMaxZoom : demNativeMaxZoom;
+    const tideReliefMaxZoom = tideReliefSource.type === "tile-endpoint"
+      ? demSourceMaxZoom
+      : inferDemNativeMaxZoomFromValue(tideReliefSelection);
     const demTileSize = 512;
     const initialDemSelection = demSelection;
     if (knownDemNames.includes(initialDemSelection)) {
@@ -1701,7 +1713,11 @@
     const flatTerrainProtocol = () => ({ data: flatTerrainTileBytes.slice().buffer });
     maplibregl.addProtocol("flat-dem", flatTerrainProtocol);
 
-    const bathymetrySourceOptions = () => {
+    const bathymetrySourceOptions = (
+      source = demSource,
+      tileVersion = demTileVersion,
+      sourceMaxZoom = activeDemMaxZoom
+    ) => {
       const sourceOptions = {
         type: "raster-dem",
         bounds: bathymetryBounds,
@@ -1710,18 +1726,18 @@
         tileSize: demTileSize
       };
 
-      if (demSource.type === "pmtiles") {
+      if (source.type === "pmtiles") {
         return {
           ...sourceOptions,
-          url: `pmtiles://${demSource.url}`
+          url: `pmtiles://${source.url}`
         };
       }
 
       return {
         ...sourceOptions,
-        maxzoom: activeDemMaxZoom,
+        maxzoom: sourceMaxZoom,
         tiles: [
-          `${demSource.url}/{z}/{x}/{y}.png?v=${demTileVersion}`
+          `${source.url}/{z}/{x}/{y}.png?v=${tileVersion}`
         ]
       };
     };
@@ -3609,7 +3625,11 @@
 
     map.on("load", async () => {
       map.addSource(flatTerrainSourceId, flatTerrainSourceOptions());
-      map.addSource(tideReliefSourceId, bathymetrySourceOptions());
+      map.addSource(tideReliefSourceId, bathymetrySourceOptions(
+        tideReliefSource,
+        tideReliefTileVersion,
+        tideReliefMaxZoom
+      ));
       map.setTerrain({ source: flatTerrainSourceId, exaggeration: flatTerrainExaggeration });
 
       addIgnOrthoSourceAndLayer();
