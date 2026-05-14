@@ -1597,6 +1597,8 @@
     const demMaxValidElevation = 6000;
     const monthCoefficientCache = new Map();
     const terrainQuerySourceId = "terrain-query-bathymetrie";
+    const visibleTerrainSourceId = "bathymetrie-terrain";
+    const tideReliefSourceId = "bathymetrie";
     const visibleTerrainExaggeration = 0.001;
     let terrainQueryReadyPromise = null;
     let terrainQueryQueue = Promise.resolve();
@@ -3590,15 +3592,16 @@
     });
 
     map.on("load", async () => {
-      map.addSource("bathymetrie", bathymetrySourceOptions());
-      map.setTerrain({ source: "bathymetrie", exaggeration: visibleTerrainExaggeration });
+      map.addSource(visibleTerrainSourceId, bathymetrySourceOptions());
+      map.addSource(tideReliefSourceId, bathymetrySourceOptions());
+      map.setTerrain({ source: visibleTerrainSourceId, exaggeration: visibleTerrainExaggeration });
 
       addIgnOrthoSourceAndLayer();
 
       map.addLayer({
         id: "tide-overlay",
         type: "color-relief",
-        source: "bathymetrie",
+        source: tideReliefSourceId,
         layout: {
           visibility: tideOverlayToggle.checked ? "visible" : "none"
         },
@@ -3612,7 +3615,7 @@
       map.addLayer({
         id: "tide-foam",
         type: "color-relief",
-        source: "bathymetrie",
+        source: tideReliefSourceId,
         layout: {
           visibility: tideOverlayToggle.checked ? "visible" : "none"
         },
