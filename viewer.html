@@ -30,6 +30,17 @@
       margin: 0;
     }
 
+    .terrain-query-map {
+      position: fixed;
+      left: -256px;
+      top: -256px;
+      width: 128px;
+      height: 128px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: -1;
+    }
+
     .maregram-panel,
     .observation-dialog {
       --notebook-grid: 28px;
@@ -1612,6 +1623,9 @@
     const noDataOceanElevation = -20;
     const landMaskTileCache = new Map();
     const monthCoefficientCache = new Map();
+    const terrainQuerySourceId = "terrain-query-bathymetrie";
+    let terrainQueryReadyPromise = null;
+    let terrainQueryQueue = Promise.resolve();
     const defaultZhToDemOffset = -3.504;
     const zhToDemOffsetByHarbor = {
       "LA_ROCHELLE-PALLICE": -3.504,
@@ -2059,40 +2073,156 @@
       "https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2011-2015&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
     ];
 
-    const bathymetrySourceOptions = () => {
+    const directDemSourceOptions = (
+      source,
+      tileVersion,
+      nativeMaxZoom,
+      minzoom = 11
+    ) => {
       const common = {
         type: "raster-dem",
         bounds: bathymetryBounds,
-        minzoom: 11,
+        minzoom,
         encoding: "terrarium",
-        tileSize: demTileSize
+        tileSize: demTileSize,
+        maxzoom: nativeMaxZoom
       };
 
-      if (useDirectDemTiles) {
-        if (demSource.type === "tile-endpoint") {
-          return {
-            ...common,
-            tiles: [
-              `${demSource.url}/{z}/{x}/{y}.png?v=${demTileVersion}`
-            ],
-            maxzoom: demSourceMaxZoom
-          };
-        }
+      if (source.type === "tile-endpoint") {
         return {
           ...common,
-          url: `pmtiles://${demSource.url}`
+          tiles: [
+            `${source.url}/{z}/{x}/{y}.png?v=${tileVersion}`
+          ]
         };
+      }
+
+      return {
+        ...common,
+        url: `pmtiles://${source.url}`
+      };
+    };
+
+    const samplingBathymetrySourceOptions = () =>
+      directDemSourceOptions(
+        demSamplingSource,
+        demSamplingTileVersion,
+        demSamplingSource.type === "tile-endpoint" ? demSourceMaxZoom : demSamplingNativeMaxZoom
+      );
+
+    const bathymetrySourceOptions = () => {
+      if (useDirectDemTiles) {
+        return directDemSourceOptions(
+          demSource,
+          demTileVersion,
+          demSource.type === "tile-endpoint" ? demSourceMaxZoom : demNativeMaxZoom
+        );
       }
 
       const maskedSourceMaxZoom = demSource.type === "pmtiles" ? demNativeMaxZoom : demSourceMaxZoom;
       return {
-        ...common,
+        type: "raster-dem",
+        bounds: bathymetryBounds,
+        minzoom: 11,
+        encoding: "terrarium",
+        tileSize: demTileSize,
         tiles: [
           "masked-dem://bathymetrie/{z}/{x}/{y}.png"
         ],
         // Source maxzoom is the native DEM zoom. MapLibre still overzooms this above Z15/Z18.
         maxzoom: maskedSourceMaxZoom
       };
+    };
+
+    const waitForTerrainQueryIdle = (queryMap, timeoutMs = 3500) => new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
+        queryMap.off("idle", finish);
+        resolve();
+      };
+      const timeoutId = setTimeout(finish, timeoutMs);
+      queryMap.once("idle", finish);
+      requestAnimationFrame(() => {
+        if (!settled && queryMap.loaded?.() && queryMap.areTilesLoaded?.()) {
+          finish();
+        }
+      });
+      queryMap.triggerRepaint?.();
+    });
+
+    const ensureTerrainQueryMap = () => {
+      if (terrainQueryReadyPromise) {
+        return terrainQueryReadyPromise;
+      }
+
+      terrainQueryReadyPromise = new Promise((resolve) => {
+        const container = document.createElement("div");
+        container.className = "terrain-query-map";
+        document.body.appendChild(container);
+
+        const queryMap = new maplibregl.Map({
+          container,
+          style: {
+            version: 8,
+            sources: {},
+            layers: []
+          },
+          center: mapInitialCenter,
+          zoom: Math.min(demSamplingNativeMaxZoom, 15),
+          interactive: false,
+          attributionControl: false,
+          fadeDuration: 0
+        });
+
+        queryMap.on("load", () => {
+          queryMap.addSource(terrainQuerySourceId, samplingBathymetrySourceOptions());
+          queryMap.setTerrain({ source: terrainQuerySourceId, exaggeration: 1 });
+          resolve(queryMap);
+        });
+
+        queryMap.on("error", (event) => {
+          if (demDebug) {
+            console.warn("Terrain query map error", event?.error ?? event);
+          }
+        });
+      });
+
+      return terrainQueryReadyPromise;
+    };
+
+    const queryTerrainElevationWithMapLibre = (lon, lat) => {
+      const task = terrainQueryQueue
+        .catch(() => {})
+        .then(async () => {
+          try {
+            const queryMap = await ensureTerrainQueryMap();
+            queryMap.jumpTo({
+              center: [lon, lat],
+              zoom: Math.min(demSamplingNativeMaxZoom, 18),
+              bearing: 0,
+              pitch: 0
+            });
+            await waitForTerrainQueryIdle(queryMap);
+            const elevation = queryMap.queryTerrainElevation([lon, lat]);
+            if (demDebug) {
+              console.info("DEM queryTerrainElevation sample", { lon, lat, elevation });
+            }
+            return isValidDemElevation(elevation) ? elevation : null;
+          } catch (error) {
+            if (demDebug) {
+              console.warn("Unable to query terrain elevation", error);
+            }
+            return null;
+          }
+        });
+
+      terrainQueryQueue = task.catch(() => {});
+      return task;
     };
 
     const maskedDemProtocol = async (params, abortController) => {
@@ -2409,6 +2539,12 @@
       const cacheKey = `${demSamplingSource.type}/${demSamplingSource.url}/${demSamplingTileVersion}/${demSamplingNativeMaxZoom}/${lon.toFixed(7)}/${lat.toFixed(7)}`;
       if (demSampleCache.has(cacheKey)) {
         return demSampleCache.get(cacheKey);
+      }
+
+      const terrainElevation = await queryTerrainElevationWithMapLibre(lon, lat);
+      if (terrainElevation != null) {
+        demSampleCache.set(cacheKey, terrainElevation);
+        return terrainElevation;
       }
 
       const tileCoordinate = lonLatToTileCoordinate(lon, lat, demSamplingNativeMaxZoom);
