@@ -30,6 +30,31 @@
       margin: 0;
     }
 
+    .maregram-panel,
+    .observation-dialog {
+      --notebook-grid: 28px;
+      --notebook-line: rgba(100, 116, 139, 0.24);
+      --notebook-cross: rgba(100, 116, 139, 0.18);
+      --notebook-ink: #0f172a;
+      --notebook-muted: #475569;
+      --notebook-accent: #1d4ed8;
+      border: 1px solid rgba(100, 116, 139, 0.28);
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(30, 64, 175, 0.14) 0 5px, transparent 5px),
+        rgba(255, 253, 244, 0.97);
+      color: var(--notebook-ink);
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      box-shadow: 0 18px 42px rgba(15, 23, 42, 0.24);
+    }
+
+    .maregram-panel button,
+    .observation-dialog button,
+    .maregram-panel input,
+    .observation-dialog input {
+      font-family: inherit;
+    }
+
     .maplibregl-ctrl-bottom-left,
     .maplibregl-ctrl-bottom-right {
       display: none;
@@ -46,19 +71,26 @@
       bottom: calc(env(safe-area-inset-bottom) + 18px);
       transform: translateX(-50%);
       z-index: 1;
+      --panel-view-height: 266px;
       display: grid;
       gap: 8px;
       width: min(820px, calc(100% - 24px));
       max-width: 820px;
       padding: 10px 12px 12px;
-      border: 1px solid rgba(30, 41, 59, 0.18);
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.93);
-      color: #1f2937;
-      font: 13px/1.25 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.14);
+      font-size: 13px;
+      line-height: 1.25;
+      background:
+        linear-gradient(90deg, var(--notebook-cross) 1px, transparent 1px),
+        linear-gradient(var(--notebook-line) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 64, 175, 0.14) 0 5px, transparent 5px),
+        rgba(255, 253, 244, 0.97);
+      background-size: var(--notebook-grid) var(--notebook-grid), var(--notebook-grid) var(--notebook-grid), auto, auto;
       -webkit-user-select: none;
       user-select: none;
+    }
+
+    .maregram-panel[hidden] {
+      display: none;
     }
 
     .maregram-header {
@@ -73,8 +105,14 @@
       flex-wrap: wrap;
       align-items: center;
       gap: 10px;
-      margin-right: auto;
       width: 100%;
+    }
+
+    .date-switch-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: auto;
     }
 
     .date-control {
@@ -82,17 +120,17 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      margin-right: auto;
     }
 
     .date-step,
-    .date-button {
+    .date-button,
+    .view-switch-button {
       appearance: none;
       min-height: 32px;
       border: 1px solid rgba(51, 65, 85, 0.28);
       border-radius: 5px;
-      background: #ffffff;
-      color: #1f2937;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--notebook-ink);
       font: inherit;
       cursor: pointer;
     }
@@ -107,15 +145,35 @@
     .date-button {
       min-width: 170px;
       padding: 0 10px;
-      font-weight: 700;
       text-align: center;
       font-variant-numeric: tabular-nums;
+    }
+
+    .view-switch-button {
+      min-width: 78px;
+      padding: 0 10px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .date-button,
+    .view-switch-button {
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .view-switch-button-active {
+      border-color: rgba(37, 99, 235, 0.62);
+      background: rgba(219, 234, 254, 0.82);
+      color: #1d4ed8;
     }
 
     .date-step:hover,
     .date-step:focus-visible,
     .date-button:hover,
-    .date-button:focus-visible {
+    .date-button:focus-visible,
+    .view-switch-button:hover,
+    .view-switch-button:focus-visible {
       border-color: rgba(37, 99, 235, 0.62);
       outline: none;
       box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
@@ -139,12 +197,18 @@
       width: min(410px, calc(100vw - 32px));
       box-sizing: border-box;
       height: min(438px, calc(100dvh - 96px));
-      border: 1px solid rgba(15, 23, 42, 0.18);
-      border-radius: 6px;
-      background: #f8fafc;
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+      border: 1px solid rgba(100, 116, 139, 0.28);
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(100, 116, 139, 0.18) 1px, transparent 1px),
+        linear-gradient(rgba(100, 116, 139, 0.22) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 64, 175, 0.14) 0 5px, transparent 5px),
+        rgba(255, 253, 244, 0.98);
+      background-size: 28px 28px, 28px 28px, auto, auto;
+      box-shadow: 0 18px 42px rgba(15, 23, 42, 0.24);
       overflow: hidden;
-      color: #1f2937;
+      color: #0f172a;
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     }
 
     .date-calendar[hidden] {
@@ -156,8 +220,9 @@
       grid-template-columns: 34px 1fr 34px;
       align-items: center;
       height: 37px;
-      background: #0f3b70;
-      color: #ffffff;
+      border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+      background: rgba(255, 253, 244, 0.78);
+      color: #0f172a;
     }
 
     .calendar-month {
@@ -174,7 +239,10 @@
       border: 0;
       background: transparent;
       color: inherit;
-      font: 20px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: inherit;
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1;
       cursor: pointer;
     }
 
@@ -189,13 +257,13 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 1px;
       height: calc(100% - 37px);
-      background: rgba(148, 163, 184, 0.35);
+      background: rgba(100, 116, 139, 0.22);
     }
 
     .calendar-column {
       display: grid;
       grid-template-rows: repeat(12, 1fr);
-      background: #ffffff;
+      background: rgba(255, 253, 244, 0.82);
     }
 
     .calendar-column-head,
@@ -207,13 +275,15 @@
       min-height: 0;
       padding: 3px 9px;
       border: 0;
-      color: #1f2937;
-      font: 12px/1.05 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #0f172a;
+      font-family: inherit;
+      font-size: 12px;
+      line-height: 1.05;
       overflow: hidden;
     }
 
     .calendar-column-head {
-      background: #f8fafc;
+      background: rgba(255, 253, 244, 0.88);
       font-weight: 800;
     }
 
@@ -247,16 +317,26 @@
       box-sizing: border-box;
       min-height: 100%;
       padding: 18px;
-      background: #ffffff;
+      background: rgba(255, 253, 244, 0.9);
       color: #475569;
       text-align: center;
     }
 
     .maregram-coeff {
-      color: #1d4ed8;
-      font-size: 18px;
+      margin-left: auto;
+      color: var(--notebook-accent);
+      font-size: 20px;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
+    }
+
+    .maregram-content {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 8px;
+      height: var(--panel-view-height);
+      min-height: 0;
+      overflow: hidden;
     }
 
     .tide-events {
@@ -271,10 +351,10 @@
       gap: 2px;
       min-width: 0;
       padding: 7px 8px;
-      border: 1px solid rgba(37, 99, 235, 0.18);
-      border-radius: 6px;
-      background: rgba(239, 246, 255, 0.78);
-      color: #1f2937;
+      border: 1px solid rgba(100, 116, 139, 0.24);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.58);
+      color: var(--notebook-ink);
       cursor: pointer;
       font: inherit;
       font-variant-numeric: tabular-nums;
@@ -284,27 +364,27 @@
     .tide-event:hover,
     .tide-event:focus-visible,
     .tide-event-active {
-      border-color: rgba(37, 99, 235, 0.62);
-      background: rgba(219, 234, 254, 0.96);
+      border-color: rgba(30, 64, 175, 0.54);
+      background: rgba(255, 255, 255, 0.84);
       outline: none;
       box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
     }
 
     .tide-event-type {
-      color: #475569;
+      color: var(--notebook-muted);
       font-size: 11px;
-      font-weight: 650;
+      font-weight: 800;
       text-transform: uppercase;
     }
 
     .tide-event-time {
-      color: #0f172a;
+      color: var(--notebook-ink);
       font-size: 17px;
-      font-weight: 750;
+      font-weight: 800;
     }
 
     .tide-event-height {
-      color: #334155;
+      color: var(--notebook-muted);
       font-size: 12px;
     }
 
@@ -312,19 +392,25 @@
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      color: #334155;
+      color: var(--notebook-muted);
+      font-size: 14px;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
 
     .maregram-chart {
-      width: 100%;
-      height: 158px;
+      justify-self: center;
+      width: min(100%, 784px);
+      height: 100%;
+      min-height: 0;
       touch-action: none;
+      border-radius: 5px;
+      background: transparent;
     }
 
-    .maregram-grid {
-      stroke: rgba(100, 116, 139, 0.34);
-      stroke-width: 1;
+    .maregram-chart text {
+      font-family: inherit;
+      font-weight: 700;
     }
 
     .maregram-axis {
@@ -478,6 +564,388 @@
       margin: auto;
     }
 
+    .observation-dialog {
+      position: fixed;
+      z-index: 9;
+      font-size: 13px;
+      line-height: 1.25;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    .observation-dialog[hidden],
+    .maregram-content[hidden],
+    .observation-library[hidden] {
+      display: none;
+    }
+
+    .observation-dialog {
+      left: 50%;
+      top: 50%;
+      width: min(360px, calc(100vw - 28px));
+      transform: translate(-50%, -50%);
+      background:
+        linear-gradient(90deg, rgba(100, 116, 139, 0.18) 1px, transparent 1px),
+        linear-gradient(rgba(100, 116, 139, 0.24) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 64, 175, 0.14) 0 5px, transparent 5px),
+        rgba(255, 253, 244, 0.97);
+      background-size: var(--notebook-grid) var(--notebook-grid), var(--notebook-grid) var(--notebook-grid), auto, auto;
+    }
+
+    .observation-form {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .observation-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 28px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(100, 116, 139, 0.18);
+    }
+
+    .observation-titlebar strong {
+      margin-right: auto;
+      color: var(--notebook-ink);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .observation-close,
+    .observation-secondary,
+    .observation-primary,
+    .observation-danger {
+      appearance: none;
+      min-height: 32px;
+      border: 1px solid rgba(51, 65, 85, 0.25);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--notebook-ink);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.2;
+      cursor: pointer;
+    }
+
+    .observation-close {
+      width: 30px;
+      min-height: 30px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .observation-primary {
+      border-color: rgba(37, 99, 235, 0.5);
+      background: rgba(29, 78, 216, 0.9);
+      color: #ffffff;
+    }
+
+    .observation-danger {
+      border-color: rgba(220, 38, 38, 0.34);
+      color: #b91c1c;
+    }
+
+    .observation-field {
+      display: grid;
+      gap: 5px;
+      color: var(--notebook-muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .observation-field input,
+    .observation-field select {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 32px;
+      border: 1px solid rgba(51, 65, 85, 0.28);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.74);
+      color: var(--notebook-ink);
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .species-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .species-option {
+      appearance: none;
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      padding: 4px;
+      border: 1px solid rgba(51, 65, 85, 0.18);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.58);
+      color: var(--notebook-ink);
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.05;
+      cursor: pointer;
+    }
+
+    .species-option-selected {
+      border-color: rgba(37, 99, 235, 0.72);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+    }
+
+    .condition-toggle {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .condition-option {
+      appearance: none;
+      min-height: 34px;
+      border: 1px solid rgba(51, 65, 85, 0.22);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.64);
+      color: var(--notebook-ink);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.15;
+      cursor: pointer;
+    }
+
+    .condition-option-active {
+      border-color: rgba(37, 99, 235, 0.72);
+      background: rgba(219, 234, 254, 0.82);
+      color: #1d4ed8;
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+    }
+
+    .observation-range-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .observation-range-label strong {
+      color: #1d4ed8;
+      font-size: 12px;
+    }
+
+    .observation-field[hidden] {
+      display: none;
+    }
+
+    .species-option-image,
+    .species-thumb {
+      background-image: url("data/estranv2.png");
+      background-repeat: no-repeat;
+      background-size: 400% 400%;
+    }
+
+    .species-option-image {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      background-color: transparent;
+    }
+
+    .species-option-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .observation-position {
+      color: var(--notebook-muted);
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .observation-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .observation-library {
+      --notebook-page-lines: 8;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      gap: 8px;
+      height: var(--panel-view-height);
+      min-height: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .observation-list {
+      display: grid;
+      gap: 0;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+      padding: 0 2px 0 8px;
+    }
+
+    .observation-page-controls {
+      display: grid;
+      grid-template-columns: 34px 1fr 34px;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+    }
+
+    .observation-page-button {
+      appearance: none;
+      width: 34px;
+      height: 30px;
+      border: 1px solid rgba(51, 65, 85, 0.24);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.72);
+      color: #0f172a;
+      font-family: inherit;
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .observation-page-button:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .observation-page-label {
+      color: #475569;
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .observation-location-group {
+      display: grid;
+      gap: 0;
+    }
+
+    .observation-location-page {
+      display: grid;
+      gap: 0;
+      align-content: start;
+      min-height: 100%;
+    }
+
+    .observation-location-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: var(--notebook-grid);
+      margin: 0;
+      padding: 0 6px;
+      color: #0f172a;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: var(--notebook-grid);
+    }
+
+    .observation-location-count {
+      margin-left: auto;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: var(--notebook-grid);
+    }
+
+    .observation-entry-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      column-gap: calc(var(--notebook-grid) / 2);
+      row-gap: 0;
+    }
+
+    .observation-empty {
+      padding: 12px;
+      border: 1px dashed rgba(51, 65, 85, 0.24);
+      border-radius: 5px;
+      color: #64748b;
+      text-align: center;
+    }
+
+    .observation-card {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      min-height: calc(var(--notebook-grid) * 2);
+      padding: 0 6px 0 2px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: none;
+      transition: background-color 120ms ease, color 120ms ease;
+    }
+
+    .observation-card:hover,
+    .observation-card:focus-visible {
+      background: rgba(255, 255, 255, 0.46);
+      outline: none;
+    }
+
+    .observation-thumb,
+    .species-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 0;
+      background-color: transparent;
+      object-fit: cover;
+    }
+
+    .species-thumb {
+      background-color: transparent;
+    }
+
+    .observation-thumb-empty {
+      display: grid;
+      place-items: center;
+      color: #1d4ed8;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .observation-card-title {
+      display: none;
+    }
+
+    .observation-card-body {
+      display: grid;
+      min-width: 0;
+      align-self: center;
+    }
+
+    .observation-card-schedule {
+      display: block;
+      color: #0f172a;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: var(--notebook-grid);
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     @media (max-width: 700px) {
       .app-logo {
         top: calc(env(safe-area-inset-top) + 8px);
@@ -487,6 +955,7 @@
       }
 
       .maregram-panel {
+        --panel-view-height: 210px;
         bottom: 8px;
         gap: 6px;
         width: calc(100% - 16px);
@@ -528,8 +997,13 @@
       }
 
       .maregram-heading,
-      .date-control,
       .date-button {
+        width: 100%;
+      }
+
+      .date-switch-group {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
         width: 100%;
       }
 
@@ -539,12 +1013,18 @@
       }
 
       .date-step,
-      .date-button {
+      .date-button,
+      .view-switch-button {
         min-height: 30px;
       }
 
       .date-button {
         min-width: 0;
+        padding: 0 8px;
+      }
+
+      .view-switch-button {
+        min-width: 72px;
         padding: 0 8px;
       }
 
@@ -565,7 +1045,7 @@
       }
 
       .maregram-chart {
-        height: 92px;
+        height: 100%;
       }
 
       .date-calendar {
@@ -610,15 +1090,34 @@
       .calendar-day-selected {
         outline-width: 1.5px;
       }
+
+      .observation-library {
+        --notebook-page-lines: 6;
+      }
+
+      .observation-entry-grid {
+        column-gap: 8px;
+      }
+
+      .observation-entry-grid .observation-card {
+        grid-template-columns: 34px 1fr;
+        gap: 6px;
+      }
+
+      .observation-entry-grid .species-thumb {
+        width: 34px;
+        height: 34px;
+      }
     }
 
     @media (max-width: 430px) {
       .maregram-panel {
+        --panel-view-height: 182px;
         max-height: min(46vh, 255px);
       }
 
       .maregram-chart {
-        height: 78px;
+        height: 100%;
       }
 
       .tide-events {
@@ -639,6 +1138,29 @@
         padding-inline: 5px;
         font-size: 9.5px;
       }
+
+      .observation-library {
+        --notebook-page-lines: 5;
+      }
+
+      .observation-entry-grid {
+        column-gap: 6px;
+      }
+
+      .observation-entry-grid .observation-card {
+        grid-template-columns: 28px 1fr;
+        gap: 4px;
+        padding-right: 2px;
+      }
+
+      .observation-entry-grid .species-thumb {
+        width: 28px;
+        height: 28px;
+      }
+
+      .observation-entry-grid .observation-card-schedule {
+        font-size: 11px;
+      }
     }
 
     @media (max-height: 520px) and (orientation: landscape) {
@@ -652,6 +1174,7 @@
       }
 
       .maregram-panel {
+        --panel-view-height: 126px;
         left: calc(50% + (env(safe-area-inset-left) - env(safe-area-inset-right)) / 2);
         bottom: 6px;
         width: calc(100% - env(safe-area-inset-left) - env(safe-area-inset-right) - 20px);
@@ -671,14 +1194,21 @@
         align-items: center;
       }
 
+      .date-switch-group {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        width: 100%;
+      }
+
       .date-control {
         display: grid;
-        grid-template-columns: 30px minmax(170px, 1fr) 30px;
+        grid-template-columns: 30px minmax(0, 1fr) 30px;
         width: auto;
       }
 
       .date-step,
-      .date-button {
+      .date-button,
+      .view-switch-button {
         min-height: 28px;
       }
 
@@ -735,6 +1265,10 @@
         width: min(360px, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 32px));
         height: var(--calendar-mobile-height, min(230px, calc(100dvh - 160px)));
       }
+
+      .observation-library {
+        --notebook-page-lines: 3;
+      }
     }
   </style>
 </head>
@@ -742,22 +1276,35 @@
   <div class="maregram-panel">
     <div class="maregram-header">
       <div class="maregram-heading">
-        <div class="date-control">
-          <button id="prevDay" class="date-step" type="button" aria-label="Jour précédent">‹</button>
-          <button id="datePickerButton" class="date-button" type="button">--</button>
-          <button id="nextDay" class="date-step" type="button" aria-label="Jour suivant">›</button>
-          <input id="tideDate" class="date-native" type="date" aria-label="Choisir la date">
+        <div class="date-switch-group">
+          <div class="date-control">
+            <button id="prevDay" class="date-step" type="button" aria-label="Jour précédent">‹</button>
+            <button id="datePickerButton" class="date-button" type="button">--</button>
+            <button id="nextDay" class="date-step" type="button" aria-label="Jour suivant">›</button>
+            <input id="tideDate" class="date-native" type="date" aria-label="Choisir la date">
+          </div>
+          <button id="observationLibraryToggle" class="view-switch-button" type="button" aria-pressed="false">Carnet</button>
         </div>
         <span id="maregramCoeff" class="maregram-coeff">Coeff --</span>
       </div>
     </div>
-    <div id="tideEvents" class="tide-events"></div>
-    <div class="maregram-readout">
-      <span id="maregramTime">--:--</span>
-      <span id="maregramHeight">Marée -- m</span>
-      <span id="maregramStatus" class="maregram-status"></span>
+    <div id="maregramContent" class="maregram-content">
+      <div id="tideEvents" class="tide-events"></div>
+      <div class="maregram-readout">
+        <span id="maregramTime">--:--</span>
+        <span id="maregramHeight">Marée -- m</span>
+        <span id="maregramStatus" class="maregram-status"></span>
+      </div>
+      <svg id="maregramChart" class="maregram-chart" viewBox="0 0 784 168" role="img" aria-label="Marée"></svg>
     </div>
-    <svg id="maregramChart" class="maregram-chart" viewBox="0 0 760 158" role="img" aria-label="Marée"></svg>
+    <div id="observationLibrary" class="observation-library" hidden>
+      <div id="observationList" class="observation-list"></div>
+      <div class="observation-page-controls">
+        <button id="observationPagePrev" class="observation-page-button" type="button" aria-label="Page précédente">‹</button>
+        <span id="observationPageLabel" class="observation-page-label">Page 1 / 1</span>
+        <button id="observationPageNext" class="observation-page-button" type="button" aria-label="Page suivante">›</button>
+      </div>
+    </div>
   </div>
   <div id="calendarPanel" class="date-calendar" hidden>
     <div class="calendar-header">
@@ -805,6 +1352,42 @@
       <span id="tideOpacityValue" class="debug-range-value">220%</span>
       <input id="tideOpacityRange" type="range" min="20" max="220" step="5" value="220">
     </label>
+  </div>
+  <div id="observationDialog" class="observation-dialog" hidden>
+    <form id="observationForm" class="observation-form">
+      <div class="observation-titlebar">
+        <strong id="observationDialogTitle">Observation</strong>
+        <button id="observationClose" class="observation-close" type="button" aria-label="Fermer">×</button>
+      </div>
+      <div id="observationPosition" class="observation-position"></div>
+      <label class="observation-field">
+        <span>Lieu</span>
+        <input id="observationTitle" type="text" autocomplete="off" required>
+      </label>
+      <div class="observation-field">
+        <span>Espèce</span>
+        <div id="observationSpeciesGrid" class="species-grid"></div>
+      </div>
+      <div class="observation-field">
+        <span>Plage de pêche</span>
+        <div class="condition-toggle" role="radiogroup" aria-label="Plage de pêche">
+          <button id="observationDry" class="condition-option" type="button" data-condition="dry">Au sec</button>
+          <button id="observationWet" class="condition-option" type="button" data-condition="wet">Sous l'eau</button>
+        </div>
+      </div>
+      <label id="observationWaterDepthField" class="observation-field">
+        <span class="observation-range-label">
+          <span>Eau minimale</span>
+          <strong id="observationWaterDepthValue">50 cm</strong>
+        </span>
+        <input id="observationWaterDepth" type="range" min="0" max="200" step="10" value="50">
+      </label>
+      <div class="observation-actions">
+        <button id="observationDelete" class="observation-danger" type="button" hidden>Supprimer</button>
+        <button class="observation-secondary" type="button" data-observation-cancel>Annuler</button>
+        <button class="observation-primary" type="submit">Enregistrer</button>
+      </div>
+    </form>
   </div>
   <div id="map"></div>
   <script type="module">
@@ -871,6 +1454,7 @@
     const datePickerButton = document.getElementById("datePickerButton");
     const calendarPanel = document.getElementById("calendarPanel");
     const maregramPanel = document.querySelector(".maregram-panel");
+    const maregramContent = document.getElementById("maregramContent");
     const calendarPrevMonth = document.getElementById("calendarPrevMonth");
     const calendarNextMonth = document.getElementById("calendarNextMonth");
     const calendarMonth = document.getElementById("calendarMonth");
@@ -891,15 +1475,35 @@
     const tideLandMaskToggle = document.getElementById("tideLandMaskToggle");
     const tideOpacityRange = document.getElementById("tideOpacityRange");
     const tideOpacityValue = document.getElementById("tideOpacityValue");
+    const observationDialog = document.getElementById("observationDialog");
+    const observationForm = document.getElementById("observationForm");
+    const observationDialogTitle = document.getElementById("observationDialogTitle");
+    const observationClose = document.getElementById("observationClose");
+    const observationPosition = document.getElementById("observationPosition");
+    const observationTitle = document.getElementById("observationTitle");
+    const observationSpeciesGrid = document.getElementById("observationSpeciesGrid");
+    const observationDry = document.getElementById("observationDry");
+    const observationWet = document.getElementById("observationWet");
+    const observationWaterDepthField = document.getElementById("observationWaterDepthField");
+    const observationWaterDepth = document.getElementById("observationWaterDepth");
+    const observationWaterDepthValue = document.getElementById("observationWaterDepthValue");
+    const observationDelete = document.getElementById("observationDelete");
+    const observationLibrary = document.getElementById("observationLibrary");
+    const observationLibraryToggle = document.getElementById("observationLibraryToggle");
+    const observationList = document.getElementById("observationList");
+    const observationPagePrev = document.getElementById("observationPagePrev");
+    const observationPageNext = document.getElementById("observationPageNext");
+    const observationPageLabel = document.getElementById("observationPageLabel");
     const svgNS = "http://www.w3.org/2000/svg";
     const chart = {
-      width: 760,
-      height: 158,
-      margin: { top: 14, right: 16, bottom: 28, left: 42 },
+      width: 784,
+      height: 168,
+      margin: { top: 28, right: 28, bottom: 28, left: 56 },
       data: [],
       active: null,
       cursorLine: null,
-      cursorPoint: null
+      cursorPoint: null,
+      lastPointer: null
     };
     const pageParams = new URLSearchParams(window.location.search);
     const requestedDemTileBase = pageParams.get("dem");
@@ -975,7 +1579,9 @@
     const tideLandMaskEnabled = pageParams.get("tideMask") !== "0";
     const landMaskUrl = pageParams.get("landMask") || "data/re_landmask.geojson";
     const demHasPrecomputedLandMask = /(?:^|[_-])landmasked(?:[_-]|$)/i.test(demSelection);
-    const useDirectPmtilesDem = demSource.type === "pmtiles" && useStaticShom && (!tideLandMaskEnabled || demHasPrecomputedLandMask);
+    const useDirectDemTiles =
+      demSource.type === "tile-endpoint" ||
+      (demSource.type === "pmtiles" && useStaticShom && (!tideLandMaskEnabled || demHasPrecomputedLandMask));
     const demTileSize = 512;
     const initialDemSelection = demSelection;
     if (knownDemNames.includes(initialDemSelection)) {
@@ -990,21 +1596,6 @@
     demMaxZoomInput.value = String(demNativeMaxZoom);
     tideOverlayToggle.checked = tideOverlayEnabled;
     tideLandMaskToggle.checked = tideLandMaskEnabled;
-    const namedPlaces = {
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          properties: {
-            name: "Le trou de la dame"
-          },
-          geometry: {
-            type: "Point",
-            coordinates: [-1.5109661, 46.1901220]
-          }
-        }
-      ]
-    };
     const landMaskElevation = 12000;
     const noDataOceanElevation = -20;
     const landMaskTileCache = new Map();
@@ -1022,6 +1613,15 @@
     let currentTideDemLevel = 0;
     let currentTideHeight = 0;
     let tideLayerOpacity = Number(tideOpacityRange.value) / 100;
+    let observations = [];
+    let activeObservationId = null;
+    let pendingObservationLngLat = null;
+    let pendingObservationSpeciesId = "bigorneaux";
+    let pendingObservationWaterState = "dry";
+    let pendingObservationMinWaterDepthCm = 50;
+    let pendingObservationConditionTouched = false;
+    let longPressTimer = null;
+    let longPressStart = null;
 
     const fallbackStations = [
       { cst: "SAINT-MARTIN_DE_RE", toponyme: "Saint-Martin-de-Re (Ile de Re)", lat: 46.208, lon: -1.3655, ut: 10 }
@@ -1092,6 +1692,13 @@
       return canvas;
     };
 
+    const createDomCanvas = (width, height) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      return canvas;
+    };
+
     const encodeTerrariumColor = (elevation) => {
       const encoded = Math.round((elevation + 32768) * 256);
       return [(encoded >> 16) & 255, (encoded >> 8) & 255, encoded & 255];
@@ -1099,6 +1706,17 @@
 
     const landMaskColor = encodeTerrariumColor(landMaskElevation);
     const noDataOceanColor = encodeTerrariumColor(noDataOceanElevation);
+    const demSampleCache = new Map();
+    let observationRenderToken = 0;
+    let observationLibraryPage = 0;
+
+    const decodeTerrariumColor = (red, green, blue) =>
+      (red * 256 + green + blue / 256) - 32768;
+
+    const isValidDemElevation = (elevation) =>
+      Number.isFinite(elevation) &&
+      elevation > -32000 &&
+      elevation < landMaskElevation / 2;
 
     const makeCrcTable = () => {
       const table = new Uint32Array(256);
@@ -1227,6 +1845,40 @@
     const toTransferableBytes = (buffer) => {
       const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
       return new Uint8Array(bytes.slice(0));
+    };
+
+    const decodeRasterImage = async (buffer, type = "image/png") => {
+      const blob = new Blob([buffer], { type });
+      if (typeof createImageBitmap === "function") {
+        try {
+          const bitmap = await createImageBitmap(blob);
+          return {
+            image: bitmap,
+            close: () => bitmap.close?.()
+          };
+        } catch {
+          // Safari can expose createImageBitmap but fail on PNG blobs.
+        }
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      try {
+        const image = new Image();
+        image.decoding = "async";
+        const loaded = new Promise((resolve, reject) => {
+          image.onload = () => resolve();
+          image.onerror = () => reject(new Error("Unable to decode raster image"));
+        });
+        image.src = objectUrl;
+        await loaded;
+        return {
+          image,
+          close: () => URL.revokeObjectURL(objectUrl)
+        };
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        throw error;
+      }
     };
 
     const noDataOceanTileBuffer = async (z, x, y) => {
@@ -1391,7 +2043,16 @@
         tileSize: demTileSize
       };
 
-      if (useDirectPmtilesDem) {
+      if (useDirectDemTiles) {
+        if (demSource.type === "tile-endpoint") {
+          return {
+            ...common,
+            tiles: [
+              `${demSource.url}/{z}/{x}/{y}.png?v=${demTileVersion}`
+            ],
+            maxzoom: demSourceMaxZoom
+          };
+        }
         return {
           ...common,
           url: `pmtiles://${demSource.url}`
@@ -1425,15 +2086,15 @@
       }
 
       const { nativeTile, data: sourceBuffer } = tileResult;
-      let bitmap = null;
+      let raster = null;
       try {
-        bitmap = await createImageBitmap(new Blob([sourceBuffer], { type: "image/png" }));
+        raster = await decodeRasterImage(sourceBuffer);
         const canvas = createRasterCanvas(demTileSize, demTileSize);
         const context = canvas.getContext("2d", { willReadFrequently: true });
         context.imageSmoothingEnabled = false;
         if (nativeTile.crop) {
           context.drawImage(
-            bitmap,
+            raster.image,
             nativeTile.crop.x,
             nativeTile.crop.y,
             nativeTile.crop.size,
@@ -1444,7 +2105,7 @@
             demTileSize
           );
         } else {
-          context.drawImage(bitmap, 0, 0, demTileSize, demTileSize);
+          context.drawImage(raster.image, 0, 0, demTileSize, demTileSize);
         }
 
         const imageData = context.getImageData(0, 0, demTileSize, demTileSize);
@@ -1475,7 +2136,7 @@
         }
         throw error;
       } finally {
-        bitmap?.close?.();
+        raster?.close?.();
       }
     };
 
@@ -1610,6 +2271,777 @@
           container = undefined;
         }
       };
+    };
+
+    const observationStorageKey = "mare-observations-v1";
+    const speciesAtlasUrl = "data/estranv2.png";
+    const speciesAtlasColumns = 4;
+    const speciesAtlasRows = 4;
+    const speciesAtlas = [
+      { id: "bigorneaux", name: "Bigorneaux", col: 0, row: 0 },
+      { id: "homard", name: "Homard", col: 1, row: 0 },
+      { id: "salicorne", name: "Salicorne", col: 2, row: 0 },
+      { id: "crevette", name: "Crevette", col: 3, row: 0 },
+      { id: "lancon", name: "Lançon", col: 0, row: 1 },
+      { id: "bar", name: "Bar", col: 1, row: 1 },
+      { id: "eperlan", name: "Éperlan", col: 2, row: 1 },
+      { id: "dorade", name: "Dorade", col: 3, row: 1 },
+      { id: "etrilles", name: "Étrilles", col: 0, row: 2 },
+      { id: "tourteau", name: "Tourteau", col: 1, row: 2 },
+      { id: "araignee", name: "Araignée de mer", col: 2, row: 2 },
+      { id: "crabe-roche", name: "Crabe de roche", col: 3, row: 2 },
+      { id: "coques", name: "Coques", col: 0, row: 3 },
+      { id: "huitres", name: "Huîtres", col: 1, row: 3 },
+      { id: "couteaux", name: "Couteaux", col: 2, row: 3 },
+      { id: "palourdes", name: "Palourdes", col: 3, row: 3 }
+    ];
+    const speciesById = Object.fromEntries(speciesAtlas.map((species) => [species.id, species]));
+    const defaultSpeciesId = speciesAtlas[0].id;
+
+    const createObservationId = () =>
+      globalThis.crypto?.randomUUID?.() ?? `obs-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+    const speciesForId = (speciesId) => speciesById[speciesId] ?? speciesById[defaultSpeciesId];
+
+    const speciesBackgroundPosition = (species) =>
+      `${(species.col / (speciesAtlasColumns - 1)) * 100}% ${(species.row / (speciesAtlasRows - 1)) * 100}%`;
+
+    const applySpeciesThumbStyle = (element, speciesId) => {
+      const species = speciesForId(speciesId);
+      element.style.backgroundImage = `url("${speciesAtlasUrl}")`;
+      element.style.backgroundPosition = speciesBackgroundPosition(species);
+    };
+
+    const wetDefaultSpeciesIds = new Set(["lancon", "bar", "eperlan", "dorade"]);
+
+    const clampWaterDepthCm = (value) => {
+      const depth = Number(value);
+      if (!Number.isFinite(depth)) {
+        return 50;
+      }
+      return Math.max(0, Math.min(200, Math.round(depth / 10) * 10));
+    };
+
+    const defaultFishingConditionForSpecies = (speciesId) => (
+      wetDefaultSpeciesIds.has(speciesForId(speciesId).id)
+        ? { waterState: "wet", minWaterDepthCm: 50 }
+        : { waterState: "dry", minWaterDepthCm: 0 }
+    );
+
+    const normalizeWaterState = (value) => value === "wet" ? "wet" : "dry";
+
+    const lonLatToTileCoordinate = (lon, lat, z) => {
+      const scale = 2 ** z;
+      const sinLat = Math.sin((lat * Math.PI) / 180);
+      return {
+        x: ((lon + 180) / 360) * scale,
+        y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale
+      };
+    };
+
+    const isInsideBathymetryBounds = (lon, lat) =>
+      lon >= bathymetryBounds[0] &&
+      lon <= bathymetryBounds[2] &&
+      lat >= bathymetryBounds[1] &&
+      lat <= bathymetryBounds[3];
+
+    const sampleElevationFromImageData = (imageData, x, y) => {
+      const data = imageData.data;
+      const radius = 2;
+      let nearest = null;
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        for (let dx = -radius; dx <= radius; dx += 1) {
+          const sampleX = x + dx;
+          const sampleY = y + dy;
+          if (sampleX < 0 || sampleX >= imageData.width || sampleY < 0 || sampleY >= imageData.height) {
+            continue;
+          }
+          const index = (sampleY * imageData.width + sampleX) * 4;
+          if (data[index + 3] < 128) {
+            continue;
+          }
+          const elevation = decodeTerrariumColor(data[index], data[index + 1], data[index + 2]);
+          if (!isValidDemElevation(elevation)) {
+            continue;
+          }
+          const distance = dx * dx + dy * dy;
+          if (!nearest || distance < nearest.distance) {
+            nearest = { elevation, distance };
+          }
+        }
+      }
+      return nearest?.elevation ?? null;
+    };
+
+    const sampleDemElevation = async (observation) => {
+      const lon = Number(observation.lon);
+      const lat = Number(observation.lat);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat) || !isInsideBathymetryBounds(lon, lat)) {
+        return null;
+      }
+
+      const cacheKey = `${demSource.type}/${demSource.url}/${demTileVersion}/${demNativeMaxZoom}/${lon.toFixed(7)}/${lat.toFixed(7)}`;
+      if (demSampleCache.has(cacheKey)) {
+        return demSampleCache.get(cacheKey);
+      }
+
+      const tileCoordinate = lonLatToTileCoordinate(lon, lat, demNativeMaxZoom);
+      const tileResult = await fetchDemTileWithParentFallback(
+        demNativeMaxZoom,
+        Math.floor(tileCoordinate.x),
+        Math.floor(tileCoordinate.y),
+        null
+      );
+      if (!tileResult) {
+        if (typeof map.queryTerrainElevation === "function" && map.getTerrain?.()) {
+          const terrainElevation = map.queryTerrainElevation([lon, lat]);
+          if (isValidDemElevation(terrainElevation)) {
+            if (demDebug) {
+              console.info("DEM sample from MapLibre terrain fallback", { lon, lat, elevation: terrainElevation });
+            }
+            demSampleCache.set(cacheKey, terrainElevation);
+            return terrainElevation;
+          }
+        }
+        if (demDebug) {
+          console.info("DEM sample unavailable: no tile", { lon, lat, tileCoordinate });
+        }
+        demSampleCache.set(cacheKey, null);
+        return null;
+      }
+
+      let raster = null;
+      try {
+        raster = await decodeRasterImage(tileResult.data);
+        const canvas = createDomCanvas(demTileSize, demTileSize);
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) {
+          demSampleCache.set(cacheKey, null);
+          return null;
+        }
+        context.imageSmoothingEnabled = false;
+        context.drawImage(raster.image, 0, 0, demTileSize, demTileSize);
+        const [pixelX, pixelY] = lonLatToTilePixel(
+          [lon, lat],
+          tileResult.nativeTile.z,
+          tileResult.nativeTile.x,
+          tileResult.nativeTile.y,
+          demTileSize
+        );
+        const x = Math.max(0, Math.min(demTileSize - 1, Math.floor(pixelX)));
+        const y = Math.max(0, Math.min(demTileSize - 1, Math.floor(pixelY)));
+        const imageData = context.getImageData(0, 0, demTileSize, demTileSize);
+        const elevation = sampleElevationFromImageData(imageData, x, y);
+        if (demDebug) {
+          console.info("DEM sample", { lon, lat, nativeTile: tileResult.nativeTile, pixel: { x, y }, elevation });
+        }
+        demSampleCache.set(cacheKey, elevation);
+        return elevation;
+      } catch (error) {
+        console.warn("Unable to sample DEM elevation", error);
+        demSampleCache.set(cacheKey, null);
+        return null;
+      } finally {
+        raster?.close?.();
+      }
+    };
+
+    const fishingScore = (observation, demElevation, point) => {
+      const waterDepth = point.height + selectedZhToDemOffset() - demElevation;
+      if (normalizeWaterState(observation.waterState) === "wet") {
+        return waterDepth - clampWaterDepthCm(observation.minWaterDepthCm) / 100;
+      }
+      return -waterDepth;
+    };
+
+    const crossingTime = (previousPoint, currentPoint, previousScore, currentScore) => {
+      const start = previousPoint.time.getTime();
+      const end = currentPoint.time.getTime();
+      const ratio = previousScore === currentScore
+        ? 0
+        : Math.max(0, Math.min(1, (0 - previousScore) / (currentScore - previousScore)));
+      return new Date(start + (end - start) * ratio);
+    };
+
+    const fishingIntervals = (observation, demElevation) => {
+      if (!chart.data.length || demElevation == null) {
+        return [];
+      }
+      const intervals = [];
+      let previousPoint = chart.data[0];
+      let previousScore = fishingScore(observation, demElevation, previousPoint);
+      let isActive = previousScore >= 0;
+      let intervalStart = isActive ? previousPoint.time : null;
+
+      for (let index = 1; index < chart.data.length; index += 1) {
+        const point = chart.data[index];
+        const score = fishingScore(observation, demElevation, point);
+        const active = score >= 0;
+        if (active !== isActive) {
+          const transition = crossingTime(previousPoint, point, previousScore, score);
+          if (active) {
+            intervalStart = transition;
+          } else if (intervalStart) {
+            intervals.push({ start: intervalStart, end: transition });
+            intervalStart = null;
+          }
+        }
+        previousPoint = point;
+        previousScore = score;
+        isActive = active;
+      }
+
+      if (isActive && intervalStart) {
+        intervals.push({ start: intervalStart, end: chart.data[chart.data.length - 1].time });
+      }
+
+      return intervals.filter((interval) => interval.end.getTime() - interval.start.getTime() >= 5 * 60000);
+    };
+
+    const formatFishingTime = (time) =>
+      time.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+    const daytimeFishingWindow = () => {
+      const date = chart.data[0]?.time;
+      if (!date) {
+        return null;
+      }
+      const start = new Date(date);
+      start.setHours(6, 0, 0, 0);
+      const end = new Date(date);
+      end.setHours(22, 0, 0, 0);
+      return { start, end };
+    };
+
+    const clipFishingIntervalsToDaytime = (intervals) => {
+      const window = daytimeFishingWindow();
+      if (!window) {
+        return [];
+      }
+      return intervals
+        .map((interval) => ({
+          start: new Date(Math.max(interval.start.getTime(), window.start.getTime())),
+          end: new Date(Math.min(interval.end.getTime(), window.end.getTime()))
+        }))
+        .filter((interval) => interval.end.getTime() - interval.start.getTime() >= 5 * 60000);
+    };
+
+    const formatFishingIntervals = (intervals) => {
+      if (!chart.data.length) {
+        return "Créneau indisponible";
+      }
+      const visibleIntervals = clipFishingIntervalsToDaytime(intervals);
+      if (!visibleIntervals.length) {
+        return "Aucun créneau de jour";
+      }
+      const window = daytimeFishingWindow();
+      if (
+        visibleIntervals.length === 1 &&
+        window &&
+        visibleIntervals[0].start.getTime() <= window.start.getTime() + 10 * 60000 &&
+        visibleIntervals[0].end.getTime() >= window.end.getTime() - 10 * 60000
+      ) {
+        return "06:00-22:00";
+      }
+      return visibleIntervals
+        .map((interval) => `${formatFishingTime(interval.start)}-${formatFishingTime(interval.end)}`)
+        .join(" / ");
+    };
+
+    const fishingScheduleLabel = async (observation) => {
+      if (!chart.data.length) {
+        return "Créneau indisponible";
+      }
+      if (!isInsideBathymetryBounds(Number(observation.lon), Number(observation.lat))) {
+        return "Hors emprise bathymétrie";
+      }
+      const elevation = await sampleDemElevation(observation);
+      if (elevation == null) {
+        return "Cote DEM indisponible";
+      }
+      return formatFishingIntervals(fishingIntervals(observation, elevation));
+    };
+
+    const observationFeatureCollection = () => ({
+      type: "FeatureCollection",
+      features: observations.map((observation) => ({
+        type: "Feature",
+        properties: {
+          id: observation.id,
+          title: observation.title,
+          speciesId: observation.speciesId || defaultSpeciesId,
+          waterState: normalizeWaterState(observation.waterState),
+          minWaterDepthCm: clampWaterDepthCm(observation.minWaterDepthCm)
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [observation.lon, observation.lat]
+        }
+      }))
+    });
+
+    const updateObservationSource = () => {
+      if (map.getSource("observations")) {
+        map.getSource("observations").setData(observationFeatureCollection());
+      }
+    };
+
+    const clearObservationElevationCache = () => {
+      demSampleCache.clear();
+      if (!observationLibrary.hidden) {
+        renderObservationLibrary();
+      }
+    };
+
+    const saveObservations = () => {
+      try {
+        localStorage.setItem(observationStorageKey, JSON.stringify(observations));
+      } catch (error) {
+        console.warn("Unable to save observations", error);
+      }
+    };
+
+    const loadObservations = () => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(observationStorageKey) || "[]");
+        if (!Array.isArray(parsed)) {
+          return [];
+        }
+        return parsed
+          .filter((item) => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon)))
+          .map((item) => {
+            const speciesId = speciesById[item.speciesId] ? String(item.speciesId) : defaultSpeciesId;
+            const defaults = defaultFishingConditionForSpecies(speciesId);
+            const waterState = item.waterState ? normalizeWaterState(item.waterState) : defaults.waterState;
+            const minWaterDepthCm = item.minWaterDepthCm == null
+              ? defaults.minWaterDepthCm
+              : clampWaterDepthCm(item.minWaterDepthCm);
+            return {
+              id: String(item.id || createObservationId()),
+              title: String(item.title || item.location || "Observation"),
+              speciesId,
+              waterState,
+              minWaterDepthCm,
+              lat: Number(item.lat),
+              lon: Number(item.lon),
+              createdAt: String(item.createdAt || new Date().toISOString()),
+              updatedAt: String(item.updatedAt || item.createdAt || new Date().toISOString())
+            };
+          });
+      } catch {
+        return [];
+      }
+    };
+
+    const observationRowsPerPage = () => {
+      const rows = Number.parseInt(
+        getComputedStyle(observationLibrary).getPropertyValue("--notebook-page-lines"),
+        10
+      );
+      return Number.isFinite(rows) && rows > 0 ? rows : 7;
+    };
+
+    const groupedObservationsByLocation = () => {
+      const groups = new Map();
+      for (const observation of [...observations].sort((a, b) => {
+        const titleSort = a.title.localeCompare(b.title, "fr", { sensitivity: "base" });
+        if (titleSort !== 0) {
+          return titleSort;
+        }
+        return new Date(b.updatedAt) - new Date(a.updatedAt);
+      })) {
+        const locationGroup = observation.title || "Sans lieu";
+        if (!groups.has(locationGroup)) {
+          groups.set(locationGroup, []);
+        }
+        groups.get(locationGroup).push(observation);
+      }
+      return groups;
+    };
+
+    const observationGroupEntries = () =>
+      Array.from(groupedObservationsByLocation(), ([title, groupObservations]) => ({
+        title,
+        observations: groupObservations,
+        count: groupObservations.length
+      }));
+
+    const observationColumnsPerPage = 3;
+
+    const observationCardsPerPageWithHeading = (rowsPerPage) => {
+      const cardRows = Math.max(1, rowsPerPage - 1);
+      return Math.max(observationColumnsPerPage, Math.floor(cardRows / 2) * observationColumnsPerPage);
+    };
+
+    const observationGroupRows = (observationCount) =>
+      1 + Math.ceil(observationCount / observationColumnsPerPage) * 2;
+
+    const observationGroupChunks = (groupEntries, rowsPerPage) => {
+      const chunkCapacity = observationCardsPerPageWithHeading(rowsPerPage);
+      return groupEntries.flatMap(({ title, observations: groupObservations, count }) => {
+        const parts = Math.max(1, Math.ceil(groupObservations.length / chunkCapacity));
+        return Array.from({ length: parts }, (_, index) => {
+          const start = index * chunkCapacity;
+          const observationsChunk = groupObservations.slice(start, start + chunkCapacity);
+          return {
+            title,
+            count,
+            part: index + 1,
+            parts,
+            observations: observationsChunk,
+            rows: observationGroupRows(observationsChunk.length)
+          };
+        });
+      });
+    };
+
+    const canUseObservationChunk = (remainingChunks, chunkIndex) => {
+      const chunk = remainingChunks[chunkIndex];
+      return chunk.part <= 1 || !remainingChunks.some((candidate, index) =>
+        index < chunkIndex && candidate.title === chunk.title && candidate.part < chunk.part
+      );
+    };
+
+    const paginateObservationGroups = (groupEntries, rowsPerPage) => {
+      const remainingChunks = observationGroupChunks(groupEntries, rowsPerPage);
+      const pages = [];
+
+      const takeChunk = (page, chunkIndex) => {
+        const [chunk] = remainingChunks.splice(chunkIndex, 1);
+        page.groups.push(chunk);
+        page.rows += chunk.rows;
+      };
+
+      while (remainingChunks.length) {
+        const page = { type: "location-page", groups: [], rows: 0 };
+        takeChunk(page, 0);
+
+        while (page.rows < rowsPerPage) {
+          const remainingRows = rowsPerPage - page.rows;
+          let bestChunkIndex = -1;
+          let bestRows = 0;
+          for (let chunkIndex = 0; chunkIndex < remainingChunks.length; chunkIndex += 1) {
+            const chunk = remainingChunks[chunkIndex];
+            if (
+              chunk.rows <= remainingRows &&
+              chunk.rows > bestRows &&
+              canUseObservationChunk(remainingChunks, chunkIndex)
+            ) {
+              bestChunkIndex = chunkIndex;
+              bestRows = chunk.rows;
+            }
+          }
+          if (bestChunkIndex === -1) {
+            break;
+          }
+          takeChunk(page, bestChunkIndex);
+        }
+
+        pages.push(page);
+      }
+      return pages;
+    };
+
+    const createObservationHeading = (entry) => {
+      const heading = document.createElement("div");
+      heading.className = "observation-location-title";
+      heading.textContent = entry.title;
+      const count = document.createElement("span");
+      count.className = "observation-location-count";
+      count.textContent = entry.parts > 1
+        ? `${entry.count} - ${entry.part}/${entry.parts}`
+        : `${entry.count}`;
+      heading.appendChild(count);
+      return heading;
+    };
+
+    const createObservationCard = (observation, renderToken) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "observation-card";
+      const species = speciesForId(observation.speciesId);
+      item.setAttribute("aria-label", `${observation.title}, ${species.name}`);
+      const thumb = document.createElement("span");
+      thumb.className = "species-thumb";
+      thumb.setAttribute("aria-label", species.name);
+      applySpeciesThumbStyle(thumb, species.id);
+      const body = document.createElement("span");
+      body.className = "observation-card-body";
+      const title = document.createElement("span");
+      title.className = "observation-card-title";
+      title.textContent = observation.title;
+      const schedule = document.createElement("span");
+      schedule.className = "observation-card-schedule";
+      schedule.textContent = chart.data.length ? "Calcul..." : "Indisponible";
+      fishingScheduleLabel(observation)
+        .then((label) => {
+          if (renderToken === observationRenderToken && schedule.isConnected) {
+            schedule.textContent = label;
+          }
+        })
+        .catch((error) => {
+          console.warn("Unable to compute fishing schedule", error);
+          if (renderToken === observationRenderToken && schedule.isConnected) {
+              schedule.textContent = "Créneau indisponible";
+          }
+        });
+      body.append(title, schedule);
+      item.append(thumb, body);
+      item.addEventListener("click", () => {
+        map.flyTo({ center: [observation.lon, observation.lat], zoom: Math.max(map.getZoom(), 15), essential: true });
+        openObservationDialog({ lng: observation.lon, lat: observation.lat }, observation);
+      });
+      return item;
+    };
+
+    const createObservationLocationGroup = (group, renderToken) => {
+      const groupElement = document.createElement("section");
+      groupElement.className = "observation-location-group";
+      groupElement.appendChild(createObservationHeading(group));
+
+      const entryGrid = document.createElement("div");
+      entryGrid.className = "observation-entry-grid";
+      for (const observation of group.observations) {
+        entryGrid.appendChild(createObservationCard(observation, renderToken));
+      }
+      groupElement.appendChild(entryGrid);
+      return groupElement;
+    };
+
+    const createObservationLocationPage = (page, renderToken) => {
+      const pageContent = document.createElement("section");
+      pageContent.className = "observation-location-page";
+      for (const group of page.groups) {
+        pageContent.appendChild(createObservationLocationGroup(group, renderToken));
+      }
+      return pageContent;
+    };
+
+    const updateObservationPageControls = (pageCount) => {
+      const hasPages = pageCount > 0;
+      observationPagePrev.disabled = !hasPages || observationLibraryPage <= 0;
+      observationPageNext.disabled = !hasPages || observationLibraryPage >= pageCount - 1;
+      observationPageLabel.textContent = hasPages
+        ? `Page ${observationLibraryPage + 1} / ${pageCount}`
+        : "Page 0 / 0";
+    };
+
+    const renderObservationLibrary = () => {
+      const renderToken = ++observationRenderToken;
+      observationList.replaceChildren();
+      if (!observations.length) {
+        observationLibraryPage = 0;
+        const empty = document.createElement("div");
+        empty.className = "observation-empty";
+        empty.textContent = "Aucune observation";
+        observationList.appendChild(empty);
+        updateObservationPageControls(0);
+        return;
+      }
+
+      const groupEntries = observationGroupEntries();
+      const rowsPerPage = observationRowsPerPage();
+      const pages = paginateObservationGroups(groupEntries, rowsPerPage);
+      observationLibraryPage = Math.max(0, Math.min(observationLibraryPage, pages.length - 1));
+      const page = pages[observationLibraryPage] ?? [];
+
+      if (page.type === "location-page") {
+        observationList.appendChild(createObservationLocationPage(page, renderToken));
+      }
+      updateObservationPageControls(pages.length);
+    };
+
+    const setObservationLibraryOpen = (open) => {
+      const wasHidden = observationLibrary.hidden;
+      observationLibrary.hidden = !open;
+      maregramContent.hidden = open;
+      observationLibraryToggle.classList.toggle("view-switch-button-active", open);
+      observationLibraryToggle.setAttribute("aria-pressed", String(open));
+      observationLibraryToggle.textContent = open ? "Marée" : "Carnet";
+      if (open) {
+        if (wasHidden) {
+          observationLibraryPage = 0;
+        }
+        renderObservationLibrary();
+      }
+      if (!calendarPanel.hidden) {
+        positionCalendar();
+      }
+    };
+
+    const renderSpeciesGrid = () => {
+      observationSpeciesGrid.replaceChildren();
+      for (const species of speciesAtlas) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "species-option";
+        button.dataset.speciesId = species.id;
+        button.setAttribute("aria-label", species.name);
+        const image = document.createElement("span");
+        image.className = "species-option-image";
+        applySpeciesThumbStyle(image, species.id);
+        const name = document.createElement("span");
+        name.className = "species-option-name";
+        name.textContent = species.name;
+        button.append(image, name);
+        button.addEventListener("click", () => {
+          pendingObservationSpeciesId = species.id;
+          if (!pendingObservationConditionTouched) {
+            const defaults = defaultFishingConditionForSpecies(species.id);
+            pendingObservationWaterState = defaults.waterState;
+            pendingObservationMinWaterDepthCm = defaults.minWaterDepthCm;
+          }
+          updateSpeciesSelection();
+          updateFishingConditionControls();
+        });
+        observationSpeciesGrid.appendChild(button);
+      }
+    };
+
+    const updateSpeciesSelection = () => {
+      observationSpeciesGrid.querySelectorAll(".species-option").forEach((button) => {
+        const selected = button.dataset.speciesId === pendingObservationSpeciesId;
+        button.classList.toggle("species-option-selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      });
+    };
+
+    const updateFishingConditionControls = () => {
+      const isWet = pendingObservationWaterState === "wet";
+      observationDry.classList.toggle("condition-option-active", !isWet);
+      observationWet.classList.toggle("condition-option-active", isWet);
+      observationDry.setAttribute("aria-pressed", String(!isWet));
+      observationWet.setAttribute("aria-pressed", String(isWet));
+      observationWaterDepthField.hidden = !isWet;
+      observationWaterDepth.value = String(clampWaterDepthCm(pendingObservationMinWaterDepthCm));
+      observationWaterDepthValue.textContent = `${clampWaterDepthCm(pendingObservationMinWaterDepthCm)} cm`;
+    };
+
+    const setPendingFishingCondition = (waterState) => {
+      pendingObservationConditionTouched = true;
+      pendingObservationWaterState = normalizeWaterState(waterState);
+      if (pendingObservationWaterState === "wet" && pendingObservationMinWaterDepthCm <= 0) {
+        pendingObservationMinWaterDepthCm = 50;
+      }
+      updateFishingConditionControls();
+    };
+
+    const openObservationDialog = (lngLat, observation = null) => {
+      activeObservationId = observation?.id ?? null;
+      pendingObservationLngLat = { lng: Number(lngLat.lng), lat: Number(lngLat.lat) };
+      observationDialogTitle.textContent = observation ? "Modifier l'observation" : "Nouvelle observation";
+      observationPosition.textContent = `${pendingObservationLngLat.lat.toFixed(6)}, ${pendingObservationLngLat.lng.toFixed(6)}`;
+      observationTitle.value = observation?.title ?? "";
+      pendingObservationSpeciesId = speciesForId(observation?.speciesId).id;
+      const defaults = defaultFishingConditionForSpecies(pendingObservationSpeciesId);
+      pendingObservationWaterState = observation?.waterState ? normalizeWaterState(observation.waterState) : defaults.waterState;
+      pendingObservationMinWaterDepthCm = observation?.minWaterDepthCm == null
+        ? defaults.minWaterDepthCm
+        : clampWaterDepthCm(observation.minWaterDepthCm);
+      pendingObservationConditionTouched = Boolean(observation);
+      updateSpeciesSelection();
+      updateFishingConditionControls();
+      observationDelete.hidden = !observation;
+      observationDialog.hidden = false;
+      observationTitle.focus();
+    };
+
+    const closeObservationDialog = () => {
+      observationDialog.hidden = true;
+      activeObservationId = null;
+      pendingObservationLngLat = null;
+      observationForm.reset();
+      pendingObservationSpeciesId = defaultSpeciesId;
+      pendingObservationWaterState = "dry";
+      pendingObservationMinWaterDepthCm = 50;
+      pendingObservationConditionTouched = false;
+      updateSpeciesSelection();
+      updateFishingConditionControls();
+    };
+
+    const saveObservationFromForm = () => {
+      const title = observationTitle.value.trim();
+      if (!title || !pendingObservationLngLat) {
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const existingIndex = observations.findIndex((item) => item.id === activeObservationId);
+      const existing = existingIndex >= 0 ? observations[existingIndex] : null;
+      const observation = {
+        id: existing?.id ?? createObservationId(),
+        title,
+        speciesId: speciesForId(pendingObservationSpeciesId).id,
+        waterState: normalizeWaterState(pendingObservationWaterState),
+        minWaterDepthCm: normalizeWaterState(pendingObservationWaterState) === "wet"
+          ? clampWaterDepthCm(pendingObservationMinWaterDepthCm)
+          : 0,
+        lat: pendingObservationLngLat.lat,
+        lon: pendingObservationLngLat.lng,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now
+      };
+
+      if (existingIndex >= 0) {
+        observations.splice(existingIndex, 1, observation);
+      } else {
+        observations.push(observation);
+      }
+
+      saveObservations();
+      updateObservationSource();
+      renderObservationLibrary();
+      closeObservationDialog();
+    };
+
+    const deleteActiveObservation = () => {
+      if (!activeObservationId) {
+        return;
+      }
+      observations = observations.filter((item) => item.id !== activeObservationId);
+      saveObservations();
+      updateObservationSource();
+      renderObservationLibrary();
+      closeObservationDialog();
+    };
+
+    const speciesIconExpression = [
+      "match",
+      ["get", "speciesId"],
+      ...speciesAtlas.flatMap((species) => [species.id, `species-${species.id}`]),
+      `species-${defaultSpeciesId}`
+    ];
+
+    const loadSpeciesAtlasImage = () => new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("Atlas d'especes indisponible"));
+      image.src = speciesAtlasUrl;
+    });
+
+    const addSpeciesMarkerImages = async () => {
+      const image = await loadSpeciesAtlasImage();
+      const cellWidth = image.naturalWidth / speciesAtlasColumns;
+      const cellHeight = image.naturalHeight / speciesAtlasRows;
+      for (const species of speciesAtlas) {
+        const imageId = `species-${species.id}`;
+        if (map.hasImage(imageId)) {
+          continue;
+        }
+        const size = 80;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          continue;
+        }
+        const sourceX = species.col * cellWidth;
+        const sourceY = species.row * cellHeight;
+        context.clearRect(0, 0, size, size);
+        context.drawImage(image, sourceX, sourceY, cellWidth, cellHeight, 0, 0, size, size);
+        map.addImage(imageId, context.getImageData(0, 0, size, size), { pixelRatio: 2 });
+      }
     };
 
     const setMaregramStatus = (message = "") => {
@@ -2221,6 +3653,12 @@
       }
       const { left, right, top, bottom } = chart.plot;
       const rect = maregramChart.getBoundingClientRect();
+      if (rect.width <= 0) {
+        const start = chart.data[0].time.getTime();
+        const end = chart.data[chart.data.length - 1].time.getTime();
+        setMaregramCursorPoint(interpolatePoint(start + (end - start) * 0.5));
+        return;
+      }
       const viewX = ((clientX - rect.left) / rect.width) * chart.width;
       const x = Math.max(left, Math.min(right, viewX));
       const start = chart.data[0].time.getTime();
@@ -2229,9 +3667,43 @@
       setMaregramCursorPoint(point);
     };
 
+    const isInsideMaregramPlotBand = (event) => {
+      if (!chart.plot) {
+        return false;
+      }
+      const rect = maregramChart.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return false;
+      }
+      const viewY = ((event.clientY - rect.top) / rect.height) * chart.height;
+      return viewY >= chart.plot.top - 10 && viewY <= chart.plot.bottom + 10;
+    };
+
+    const updateMaregramCursorFromPointer = (event, force = false) => {
+      const currentPointer = { x: event.clientX, y: event.clientY };
+      if (!force) {
+        const previousPointer = chart.lastPointer;
+        chart.lastPointer = currentPointer;
+        if (!previousPointer || !isInsideMaregramPlotBand(event)) {
+          return;
+        }
+        const dx = Math.abs(currentPointer.x - previousPointer.x);
+        const dy = Math.abs(currentPointer.y - previousPointer.y);
+        if (dx < 1 || dy > dx * 0.65) {
+          return;
+        }
+      } else {
+        chart.lastPointer = currentPointer;
+      }
+      updateMaregramCursor(event.clientX);
+    };
+
     const renderMaregram = (data, tideEventData = null) => {
       chart.data = data;
       renderTideEvents(tideEventData?.length ? tideEventData : extractTideEvents(data));
+      if (!observationLibrary.hidden) {
+        renderObservationLibrary();
+      }
       maregramChart.replaceChildren();
       const { width, height, margin } = chart;
       const left = margin.left;
@@ -2251,13 +3723,11 @@
 
       for (let hour = 0; hour <= 24; hour += 3) {
         const x = left + (hour / 24) * (right - left);
-        maregramChart.appendChild(svgNode("line", { x1: x, y1: top, x2: x, y2: bottom, class: "maregram-grid" }));
         maregramChart.appendChild(svgNode("text", { x, y: height - 8, "text-anchor": "middle", fill: "#475569", "font-size": "11" })).textContent = String(hour);
       }
 
       for (let value = minHeight; value <= maxHeight; value += Math.max(1, Math.ceil((maxHeight - minHeight) / 5))) {
         const y = yFor(value);
-        maregramChart.appendChild(svgNode("line", { x1: left, y1: y, x2: right, y2: y, class: "maregram-grid" }));
         maregramChart.appendChild(svgNode("text", { x: left - 8, y: y + 4, "text-anchor": "end", fill: "#475569", "font-size": "11" })).textContent = value.toFixed(0);
       }
 
@@ -2276,9 +3746,20 @@
       maregramChart.appendChild(chart.cursorLine);
       maregramChart.appendChild(chart.cursorPoint);
 
-      maregramChart.onpointermove = (event) => updateMaregramCursor(event.clientX);
-      maregramChart.onpointerdown = (event) => updateMaregramCursor(event.clientX);
-      updateMaregramCursor(maregramChart.getBoundingClientRect().left + maregramChart.getBoundingClientRect().width * 0.5);
+      chart.lastPointer = null;
+      maregramChart.onpointerenter = (event) => {
+        chart.lastPointer = { x: event.clientX, y: event.clientY };
+      };
+      maregramChart.onpointerleave = () => {
+        chart.lastPointer = null;
+      };
+      maregramChart.onpointermove = (event) => updateMaregramCursorFromPointer(event);
+      maregramChart.onpointerdown = (event) => updateMaregramCursorFromPointer(event, true);
+      if (maregramContent.hidden) {
+        setMaregramCursorPoint(interpolatePoint(minTime + (maxTime - minTime) * 0.5));
+      } else {
+        updateMaregramCursor(maregramChart.getBoundingClientRect().left + maregramChart.getBoundingClientRect().width * 0.5);
+      }
     };
 
     const loadMaregram = async () => {
@@ -2303,6 +3784,10 @@
       }
     };
 
+    observations = loadObservations();
+    renderSpeciesGrid();
+    updateSpeciesSelection();
+    updateFishingConditionControls();
     tideDate.value = todayString();
     updateDateButton();
 
@@ -2411,10 +3896,36 @@
       if (!calendarPanel.hidden) {
         positionCalendar();
       }
+      if (!observationLibrary.hidden) {
+        renderObservationLibrary();
+      }
     });
     ignOrthoToggle.addEventListener("change", () => setIgnOrthoVisible(ignOrthoToggle.checked));
     tideOverlayToggle.addEventListener("change", () => setTideOverlayVisible(tideOverlayToggle.checked));
     tideOpacityRange.addEventListener("input", () => setTideOpacity(tideOpacityRange.value));
+    observationClose.addEventListener("click", closeObservationDialog);
+    observationLibraryToggle.addEventListener("click", () => setObservationLibraryOpen(observationLibrary.hidden));
+    observationPagePrev.addEventListener("click", () => {
+      observationLibraryPage = Math.max(0, observationLibraryPage - 1);
+      renderObservationLibrary();
+    });
+    observationPageNext.addEventListener("click", () => {
+      observationLibraryPage += 1;
+      renderObservationLibrary();
+    });
+    observationForm.querySelector("[data-observation-cancel]").addEventListener("click", closeObservationDialog);
+    observationForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      saveObservationFromForm();
+    });
+    observationDelete.addEventListener("click", deleteActiveObservation);
+    observationDry.addEventListener("click", () => setPendingFishingCondition("dry"));
+    observationWet.addEventListener("click", () => setPendingFishingCondition("wet"));
+    observationWaterDepth.addEventListener("input", () => {
+      pendingObservationConditionTouched = true;
+      pendingObservationMinWaterDepthCm = clampWaterDepthCm(observationWaterDepth.value);
+      updateFishingConditionControls();
+    });
     document.addEventListener("pointerdown", (event) => {
       if (
         !calendarPanel.hidden &&
@@ -2430,8 +3941,56 @@
       if (event.key === "Escape") {
         setDebugPanelOpen(false);
         calendarPanel.hidden = true;
+        closeObservationDialog();
+        setObservationLibraryOpen(false);
       }
     });
+
+    map.on("contextmenu", (event) => {
+      event.preventDefault();
+      event.originalEvent?.preventDefault();
+      openObservationDialog(event.lngLat);
+    });
+
+    const cancelLongPress = () => {
+      if (longPressTimer) {
+        window.clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      longPressStart = null;
+    };
+
+    const pointerLngLat = (event) => {
+      const rect = map.getCanvas().getBoundingClientRect();
+      return map.unproject([event.clientX - rect.left, event.clientY - rect.top]);
+    };
+
+    const mapCanvas = map.getCanvas();
+    mapCanvas.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" || event.button !== 0) {
+        return;
+      }
+      longPressStart = { x: event.clientX, y: event.clientY, lngLat: pointerLngLat(event) };
+      longPressTimer = window.setTimeout(() => {
+        const lngLat = longPressStart?.lngLat;
+        cancelLongPress();
+        if (lngLat) {
+          openObservationDialog(lngLat);
+        }
+      }, 650);
+    });
+    mapCanvas.addEventListener("pointermove", (event) => {
+      if (!longPressStart) {
+        return;
+      }
+      const distance = Math.hypot(event.clientX - longPressStart.x, event.clientY - longPressStart.y);
+      if (distance > 10) {
+        cancelLongPress();
+      }
+    });
+    mapCanvas.addEventListener("pointerup", cancelLongPress);
+    mapCanvas.addEventListener("pointercancel", cancelLongPress);
+    mapCanvas.addEventListener("pointerleave", cancelLongPress);
 
     map.on("moveend", () => {
       if (!stationManuallySelected && selectNearestStation()) {
@@ -2444,8 +4003,9 @@
       loadMaregram();
     });
 
-    map.on("load", () => {
+    map.on("load", async () => {
       map.addSource("masked-bathymetrie", bathymetrySourceOptions());
+      map.setTerrain({ source: "masked-bathymetrie", exaggeration: 1 });
 
       addIgnOrthoSourceAndLayer();
 
@@ -2478,41 +4038,59 @@
       });
       setTideLevel(currentTideDemLevel, currentTideHeight);
 
-      map.addSource("named-places", {
+      map.addSource("observations", {
         type: "geojson",
-        data: namedPlaces
+        data: observationFeatureCollection()
       });
 
-      map.addLayer({
-        id: "named-place-points",
-        type: "circle",
-        source: "named-places",
-        paint: {
-          "circle-radius": 5,
-          "circle-color": "#f97316",
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2
+      try {
+        await addSpeciesMarkerImages();
+      } catch (error) {
+        console.warn("Unable to load observation species atlas", error);
+      }
+
+      if (map.hasImage(`species-${defaultSpeciesId}`)) {
+        map.addLayer({
+          id: "observation-icons",
+          type: "symbol",
+          source: "observations",
+          layout: {
+            "icon-image": speciesIconExpression,
+            "icon-size": 1.84,
+            "icon-anchor": "bottom",
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true
+          }
+        });
+      } else {
+        map.addLayer({
+          id: "observation-icons",
+          type: "circle",
+          source: "observations",
+          paint: {
+            "circle-radius": 12,
+            "circle-color": "#2563eb",
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": 3
+          }
+        });
+      }
+
+      map.on("click", "observation-icons", (event) => {
+        const feature = event.features?.[0];
+        const observation = observations.find((item) => item.id === feature?.properties?.id);
+        if (observation) {
+          openObservationDialog({ lng: observation.lon, lat: observation.lat }, observation);
         }
+      });
+      map.on("mouseenter", "observation-icons", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "observation-icons", () => {
+        map.getCanvas().style.cursor = "";
       });
 
-      map.addLayer({
-        id: "named-place-labels",
-        type: "symbol",
-        source: "named-places",
-        layout: {
-          "text-field": ["get", "name"],
-          "text-font": ["Open Sans Semibold", "Arial Unicode MS Bold"],
-          "text-size": 13,
-          "text-anchor": "top",
-          "text-offset": [0, 0.9],
-          "text-allow-overlap": true
-        },
-        paint: {
-          "text-color": "#111827",
-          "text-halo-color": "#ffffff",
-          "text-halo-width": 1.5
-        }
-      });
+      map.once("idle", clearObservationElevationCache);
 
       if (chart.active) {
         setMaregramReadout(chart.active);
