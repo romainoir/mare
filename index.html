@@ -3422,6 +3422,7 @@
       minPitch: 0,
       maxPitch: 0,
       bearing: 0,
+      scrollZoom: true,
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false
@@ -3442,6 +3443,7 @@
       map.addControl(createDebugControl(), "top-right");
     }
 
+    map.scrollZoom.enable();
     map.dragRotate.disable();
     map.touchZoomRotate.disableRotation();
     map.keyboard?.disableRotation?.();
