@@ -1520,8 +1520,7 @@
     const shomStaticCache = new Map();
     const localDemTileBase = "http://127.0.0.1:8080";
     const localDefaultDemName = "bathymetrie_aquitaine_1m_512_composite";
-    const pagesDefaultDemName = "bathymetrie_aquitaine_z15_unmasked";
-    const pagesTideReliefDemName = "bathymetrie_aquitaine_z15_landmasked";
+    const pagesDefaultDemName = "bathymetrie_aquitaine_z15_landmasked";
     const defaultDemName = isLocalRuntime ? localDefaultDemName : pagesDefaultDemName;
     const isHttpUrl = (value) => /^https?:\/\//i.test(value);
     const isPmtilesArchive = (value) => /\.pmtiles(?:$|[?#])/i.test(value);
@@ -1563,7 +1562,7 @@
     const demSelection = normalizeDemSelection(requestedDemTileBase || defaultDemName);
     const demSource = resolveDemSource(requestedDemTileBase || defaultDemName);
     const tideReliefSelection = normalizeDemSelection(
-      requestedTideReliefDem || (isLocalRuntime ? requestedDemTileBase || defaultDemName : pagesTideReliefDemName)
+      requestedTideReliefDem || requestedDemTileBase || defaultDemName
     );
     const tideReliefSource = resolveDemSource(tideReliefSelection || defaultDemName);
     const demTileVersion = pageParams.get("demVersion") ?? demSelection;
@@ -1572,7 +1571,6 @@
     const knownDemNames = [
       localDefaultDemName,
       pagesDefaultDemName,
-      pagesTideReliefDemName,
       "bathymetrie_aquitaine_z15_unmasked"
     ];
     const inferDemNativeMaxZoomFromValue = (value) => {
