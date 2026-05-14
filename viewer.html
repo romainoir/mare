@@ -2274,6 +2274,7 @@
     };
 
     const observationStorageKey = "mare-observations-v1";
+    const bundledObservationsUrl = "data/observations.json";
     const speciesAtlasUrl = "data/estranv2.png";
     const speciesAtlasColumns = 4;
     const speciesAtlasRows = 4;
@@ -2591,37 +2592,59 @@
       }
     };
 
-    const loadObservations = () => {
+    const normalizeObservations = (items) => {
+      if (!Array.isArray(items)) {
+        return [];
+      }
+      return items
+        .filter((item) => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon)))
+        .map((item) => {
+          const speciesId = speciesById[item.speciesId] ? String(item.speciesId) : defaultSpeciesId;
+          const defaults = defaultFishingConditionForSpecies(speciesId);
+          const waterState = item.waterState ? normalizeWaterState(item.waterState) : defaults.waterState;
+          const minWaterDepthCm = item.minWaterDepthCm == null
+            ? defaults.minWaterDepthCm
+            : clampWaterDepthCm(item.minWaterDepthCm);
+          return {
+            id: String(item.id || createObservationId()),
+            title: String(item.title || item.location || "Observation"),
+            speciesId,
+            waterState,
+            minWaterDepthCm,
+            lat: Number(item.lat),
+            lon: Number(item.lon),
+            createdAt: String(item.createdAt || new Date().toISOString()),
+            updatedAt: String(item.updatedAt || item.createdAt || new Date().toISOString())
+          };
+        });
+    };
+
+    const loadLocalObservations = () => {
       try {
-        const parsed = JSON.parse(localStorage.getItem(observationStorageKey) || "[]");
-        if (!Array.isArray(parsed)) {
+        const storedObservations = localStorage.getItem(observationStorageKey);
+        if (!storedObservations) {
+          return null;
+        }
+        return normalizeObservations(JSON.parse(storedObservations));
+      } catch {
+        return null;
+      }
+    };
+
+    const loadBundledObservations = async () => {
+      try {
+        const response = await fetch(`${bundledObservationsUrl}?v=2026-05-14`, { cache: "no-store" });
+        if (!response.ok) {
           return [];
         }
-        return parsed
-          .filter((item) => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lon)))
-          .map((item) => {
-            const speciesId = speciesById[item.speciesId] ? String(item.speciesId) : defaultSpeciesId;
-            const defaults = defaultFishingConditionForSpecies(speciesId);
-            const waterState = item.waterState ? normalizeWaterState(item.waterState) : defaults.waterState;
-            const minWaterDepthCm = item.minWaterDepthCm == null
-              ? defaults.minWaterDepthCm
-              : clampWaterDepthCm(item.minWaterDepthCm);
-            return {
-              id: String(item.id || createObservationId()),
-              title: String(item.title || item.location || "Observation"),
-              speciesId,
-              waterState,
-              minWaterDepthCm,
-              lat: Number(item.lat),
-              lon: Number(item.lon),
-              createdAt: String(item.createdAt || new Date().toISOString()),
-              updatedAt: String(item.updatedAt || item.createdAt || new Date().toISOString())
-            };
-          });
-      } catch {
+        return normalizeObservations(await response.json());
+      } catch (error) {
+        console.warn("Unable to load bundled observations", error);
         return [];
       }
     };
+
+    const loadObservations = async () => loadLocalObservations() ?? loadBundledObservations();
 
     const observationRowsPerPage = () => {
       const rows = Number.parseInt(
@@ -3774,7 +3797,7 @@
       }
     };
 
-    observations = loadObservations();
+    observations = await loadObservations();
     renderSpeciesGrid();
     updateSpeciesSelection();
     updateFishingConditionControls();
