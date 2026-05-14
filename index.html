@@ -1597,6 +1597,7 @@
     const demMaxValidElevation = 6000;
     const monthCoefficientCache = new Map();
     const terrainQuerySourceId = "terrain-query-bathymetrie";
+    const visibleTerrainExaggeration = 0.001;
     let terrainQueryReadyPromise = null;
     let terrainQueryQueue = Promise.resolve();
     const defaultZhToDemOffset = -3.504;
@@ -3612,7 +3613,7 @@
 
     map.on("load", async () => {
       map.addSource("bathymetrie", bathymetrySourceOptions());
-      map.setTerrain({ source: "bathymetrie", exaggeration: 0 });
+      map.setTerrain({ source: "bathymetrie", exaggeration: visibleTerrainExaggeration });
 
       addIgnOrthoSourceAndLayer();
 
