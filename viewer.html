@@ -1702,8 +1702,7 @@
         bounds: bathymetryBounds,
         minzoom: 11,
         encoding: "terrarium",
-        tileSize: demTileSize,
-        maxzoom: activeDemMaxZoom
+        tileSize: demTileSize
       };
 
       if (demSource.type === "pmtiles") {
@@ -1715,6 +1714,7 @@
 
       return {
         ...sourceOptions,
+        maxzoom: activeDemMaxZoom,
         tiles: [
           `${demSource.url}/{z}/{x}/{y}.png?v=${demTileVersion}`
         ]
