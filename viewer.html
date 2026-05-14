@@ -1693,40 +1693,52 @@
       "https://data.geopf.fr/wmts?SERVICE=WMTS&VERSION=1.0.0&REQUEST=GetTile&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2011-2015&STYLE=normal&FORMAT=image/jpeg&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
     ];
 
-    const directDemSourceOptions = (
-      source,
-      tileVersion,
-      nativeMaxZoom,
-      minzoom = 11
-    ) => {
-      const common = {
-        type: "raster-dem",
-        bounds: bathymetryBounds,
-        minzoom,
-        encoding: "terrarium",
-        tileSize: demTileSize,
-        maxzoom: nativeMaxZoom
-      };
-
-      if (source.type === "tile-endpoint") {
-        return {
-          ...common,
-          tiles: [
-            `${source.url}/{z}/{x}/{y}.png?v=${tileVersion}`
-          ]
-        };
+    const parseDemTileUrl = (url) => {
+      const match = url.match(/^dem:\/\/[^/]+\/(\d+)\/(\d+)\/(\d+)(?:\.png)?(?:\?.*)?$/);
+      if (!match) {
+        throw new Error(`Invalid DEM tile URL: ${url}`);
       }
-
       return {
-        ...common,
-        tiles: [
-          `pmtiles://${source.url}/{z}/{x}/{y}.png`
-        ]
+        z: Number(match[1]),
+        x: Number(match[2]),
+        y: Number(match[3])
       };
     };
 
+    const demTileProtocol = async (params, abortController) => {
+      const { z, x, y } = parseDemTileUrl(params.url);
+      if (demSource.type === "pmtiles") {
+        const tile = await pmtilesProtocol.tilev4({
+          url: `pmtiles://${demSource.url}/${z}/${x}/${y}.png`
+        }, abortController);
+        if (!tile?.data) {
+          throw new Error(`DEM PMTiles tile missing: ${z}/${x}/${y}`);
+        }
+        return { data: tile.data };
+      }
+
+      const tileUrl = `${demSource.url}/${z}/${x}/${y}.png?v=${demTileVersion}`;
+      const response = await fetch(tileUrl, { signal: abortController?.signal });
+      if (!response.ok) {
+        throw new Error(`DEM tile HTTP ${response.status}: ${z}/${x}/${y}`);
+      }
+      return { data: await response.arrayBuffer() };
+    };
+
     const bathymetrySourceOptions = () =>
-      directDemSourceOptions(demSource, demTileVersion, activeDemMaxZoom);
+      ({
+        type: "raster-dem",
+        bounds: bathymetryBounds,
+        minzoom: 11,
+        encoding: "terrarium",
+        tileSize: demTileSize,
+        maxzoom: activeDemMaxZoom,
+        tiles: [
+          "dem://bathymetrie/{z}/{x}/{y}.png"
+        ]
+      });
+
+    maplibregl.addProtocol("dem", demTileProtocol);
 
     const waitForTerrainQueryIdle = (queryMap, timeoutMs = 3500) => new Promise((resolve) => {
       let settled = false;
