@@ -3612,6 +3612,7 @@
 
     map.on("load", async () => {
       map.addSource("bathymetrie", bathymetrySourceOptions());
+      map.setTerrain({ source: "bathymetrie", exaggeration: 0 });
 
       addIgnOrthoSourceAndLayer();
 
