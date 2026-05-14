@@ -2393,16 +2393,6 @@
         null
       );
       if (!tileResult) {
-        if (typeof map.queryTerrainElevation === "function" && map.getTerrain?.()) {
-          const terrainElevation = map.queryTerrainElevation([lon, lat]);
-          if (isValidDemElevation(terrainElevation)) {
-            if (demDebug) {
-              console.info("DEM sample from MapLibre terrain fallback", { lon, lat, elevation: terrainElevation });
-            }
-            demSampleCache.set(cacheKey, terrainElevation);
-            return terrainElevation;
-          }
-        }
         if (demDebug) {
           console.info("DEM sample unavailable: no tile", { lon, lat, tileCoordinate });
         }
@@ -4005,7 +3995,6 @@
 
     map.on("load", async () => {
       map.addSource("masked-bathymetrie", bathymetrySourceOptions());
-      map.setTerrain({ source: "masked-bathymetrie", exaggeration: 1 });
 
       addIgnOrthoSourceAndLayer();
 
