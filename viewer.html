@@ -1579,6 +1579,18 @@
     const tideLandMaskEnabled = pageParams.get("tideMask") !== "0";
     const landMaskUrl = pageParams.get("landMask") || "data/re_landmask.geojson";
     const demHasPrecomputedLandMask = /(?:^|[_-])landmasked(?:[_-]|$)/i.test(demSelection);
+    const demSamplingSelection = demHasPrecomputedLandMask
+      ? demSelection.replace(/landmasked/i, "unmasked")
+      : demSelection;
+    const demSamplingSource = demHasPrecomputedLandMask
+      ? resolveDemSource(isLocalRuntime && !isHttpUrl(demSamplingSelection)
+        ? `${demSamplingSelection}.pmtiles`
+        : demSamplingSelection)
+      : demSource;
+    const demSamplingNativeMaxZoom = demHasPrecomputedLandMask
+      ? inferDemNativeMaxZoomFromValue(demSamplingSelection)
+      : demNativeMaxZoom;
+    const demSamplingTileVersion = pageParams.get("demSamplingVersion") ?? demSamplingSelection;
     const useDirectDemTiles =
       demSource.type === "tile-endpoint" ||
       (demSource.type === "pmtiles" && useStaticShom && (!tideLandMaskEnabled || demHasPrecomputedLandMask));
@@ -1993,14 +2005,19 @@
       };
     };
 
-    const fetchDemTileData = async (nativeTile, abortController) => {
-      if (demSource.type === "pmtiles") {
-        const tileUrl = `pmtiles://${demSource.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png`;
+    const fetchDemTileData = async (
+      nativeTile,
+      abortController,
+      source = demSource,
+      tileVersion = demTileVersion
+    ) => {
+      if (source.type === "pmtiles") {
+        const tileUrl = `pmtiles://${source.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png`;
         const tile = await pmtilesProtocol.tilev4({ url: tileUrl }, abortController);
         return tile.data ? { status: 200, data: tile.data } : { status: 404, data: null };
       }
 
-      const tileUrl = `${demSource.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png?v=${demTileVersion}`;
+      const tileUrl = `${source.url}/${nativeTile.z}/${nativeTile.x}/${nativeTile.y}.png?v=${tileVersion}`;
       const response = await fetch(tileUrl, { signal: abortController?.signal });
       if (!response.ok) {
         return { status: response.status, data: null };
@@ -2008,11 +2025,19 @@
       return { status: response.status, data: await response.arrayBuffer() };
     };
 
-    const fetchDemTileWithParentFallback = async (z, x, y, abortController) => {
-      const firstZoom = Math.min(z, demNativeMaxZoom);
+    const fetchDemTileWithParentFallback = async (
+      z,
+      x,
+      y,
+      abortController,
+      source = demSource,
+      nativeMaxZoom = demNativeMaxZoom,
+      tileVersion = demTileVersion
+    ) => {
+      const firstZoom = Math.min(z, nativeMaxZoom);
       for (let candidateZoom = firstZoom; candidateZoom >= demNativeMinZoom; candidateZoom -= 1) {
         const nativeTile = nativeDemTileForRequest(z, x, y, candidateZoom);
-        const tile = await fetchDemTileData(nativeTile, abortController);
+        const tile = await fetchDemTileData(nativeTile, abortController, source, tileVersion);
         if (tile.status === 204 || tile.status === 404) {
           if (demDebug) {
             console.info("DEM tile miss", { requested: { z, x, y }, nativeTile, status: tile.status });
@@ -2023,7 +2048,7 @@
           throw new Error(`DEM tile HTTP ${tile.status}`);
         }
         if (demDebug) {
-          console.info("DEM tile hit", { requested: { z, x, y }, nativeTile, source: demSource.type });
+          console.info("DEM tile hit", { requested: { z, x, y }, nativeTile, source: source.type });
         }
         return { nativeTile, data: tile.data };
       }
@@ -2381,17 +2406,20 @@
         return null;
       }
 
-      const cacheKey = `${demSource.type}/${demSource.url}/${demTileVersion}/${demNativeMaxZoom}/${lon.toFixed(7)}/${lat.toFixed(7)}`;
+      const cacheKey = `${demSamplingSource.type}/${demSamplingSource.url}/${demSamplingTileVersion}/${demSamplingNativeMaxZoom}/${lon.toFixed(7)}/${lat.toFixed(7)}`;
       if (demSampleCache.has(cacheKey)) {
         return demSampleCache.get(cacheKey);
       }
 
-      const tileCoordinate = lonLatToTileCoordinate(lon, lat, demNativeMaxZoom);
+      const tileCoordinate = lonLatToTileCoordinate(lon, lat, demSamplingNativeMaxZoom);
       const tileResult = await fetchDemTileWithParentFallback(
-        demNativeMaxZoom,
+        demSamplingNativeMaxZoom,
         Math.floor(tileCoordinate.x),
         Math.floor(tileCoordinate.y),
-        null
+        null,
+        demSamplingSource,
+        demSamplingNativeMaxZoom,
+        demSamplingTileVersion
       );
       if (!tileResult) {
         if (demDebug) {
