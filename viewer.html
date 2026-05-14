@@ -1449,7 +1449,6 @@
     const bathymetryBounds = [-1.681015, 46.134064, -1.407020, 46.324219];
     const mapInitialCenter = [-1.51029, 46.22263];
     const mapMinZoom = 12.62;
-    const mapMaxZoom = 20;
     const mapMaxBounds = [
       [bathymetryBounds[0], bathymetryBounds[1]],
       [bathymetryBounds[2], bathymetryBounds[3]]
@@ -3417,14 +3416,12 @@
       center: mapInitialCenter,
       zoom: mapMinZoom,
       minZoom: mapMinZoom,
-      maxZoom: mapMaxZoom,
       maxBounds: mapMaxBounds,
       hash: true,
       pitch: 0,
       minPitch: 0,
       maxPitch: 0,
       bearing: 0,
-      scrollZoom: false,
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false
@@ -3445,7 +3442,6 @@
       map.addControl(createDebugControl(), "top-right");
     }
 
-    map.scrollZoom.disable();
     map.dragRotate.disable();
     map.touchZoomRotate.disableRotation();
     map.keyboard?.disableRotation?.();
@@ -3588,52 +3584,6 @@
     };
 
     const mapCanvas = map.getCanvas();
-    const mapContainer = map.getContainer();
-    const normalizedWheelDeltaY = (event) => {
-      if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
-        return event.deltaY * 16;
-      }
-      if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
-        return event.deltaY * window.innerHeight;
-      }
-      return event.deltaY;
-    };
-
-    mapContainer.addEventListener("wheel", (event) => {
-      event.preventDefault();
-      const deltaY = normalizedWheelDeltaY(event);
-      if (!Number.isFinite(deltaY) || deltaY === 0) {
-        return;
-      }
-
-      const rect = mapCanvas.getBoundingClientRect();
-      if (
-        event.clientX < rect.left ||
-        event.clientX > rect.right ||
-        event.clientY < rect.top ||
-        event.clientY > rect.bottom
-      ) {
-        return;
-      }
-      const point = [event.clientX - rect.left, event.clientY - rect.top];
-      const zoomSpeed = event.ctrlKey ? 80 : 140;
-      const zoomDelta = Math.max(-1.2, Math.min(1.2, -deltaY / zoomSpeed));
-      const currentZoom = map.getZoom();
-      const targetZoom = Math.max(
-        mapMinZoom,
-        Math.min(mapMaxZoom, currentZoom + zoomDelta)
-      );
-      if (Math.abs(targetZoom - currentZoom) < 0.001) {
-        return;
-      }
-
-      map.zoomTo(targetZoom, {
-        around: map.unproject(point),
-        duration: 60,
-        essential: true
-      });
-    }, { passive: false, capture: true });
-
     mapCanvas.addEventListener("pointerdown", (event) => {
       if (event.pointerType === "mouse" || event.button !== 0) {
         return;
