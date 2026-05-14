@@ -1719,7 +1719,9 @@
 
       return {
         ...common,
-        url: `pmtiles://${source.url}`
+        tiles: [
+          `pmtiles://${source.url}/{z}/{x}/{y}.png`
+        ]
       };
     };
 
