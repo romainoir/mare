@@ -3422,7 +3422,7 @@
       minPitch: 0,
       maxPitch: 0,
       bearing: 0,
-      scrollZoom: true,
+      scrollZoom: false,
       dragRotate: false,
       pitchWithRotate: false,
       touchPitch: false
@@ -3443,7 +3443,7 @@
       map.addControl(createDebugControl(), "top-right");
     }
 
-    map.scrollZoom.enable();
+    map.scrollZoom.disable();
     map.dragRotate.disable();
     map.touchZoomRotate.disableRotation();
     map.keyboard?.disableRotation?.();
@@ -3586,6 +3586,42 @@
     };
 
     const mapCanvas = map.getCanvas();
+    const normalizedWheelDeltaY = (event) => {
+      if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+        return event.deltaY * 16;
+      }
+      if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+        return event.deltaY * window.innerHeight;
+      }
+      return event.deltaY;
+    };
+    mapCanvas.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      const deltaY = normalizedWheelDeltaY(event);
+      if (!Number.isFinite(deltaY) || deltaY === 0) {
+        return;
+      }
+
+      const rect = mapCanvas.getBoundingClientRect();
+      const point = [event.clientX - rect.left, event.clientY - rect.top];
+      const zoomSpeed = event.ctrlKey ? 120 : 420;
+      const zoomDelta = Math.max(-1.4, Math.min(1.4, -deltaY / zoomSpeed));
+      const currentZoom = map.getZoom();
+      const targetZoom = Math.max(
+        map.getMinZoom(),
+        Math.min(map.getMaxZoom(), currentZoom + zoomDelta)
+      );
+      if (Math.abs(targetZoom - currentZoom) < 0.001) {
+        return;
+      }
+
+      map.zoomTo(targetZoom, {
+        around: map.unproject(point),
+        duration: 0,
+        essential: true
+      });
+    }, { passive: false });
+
     mapCanvas.addEventListener("pointerdown", (event) => {
       if (event.pointerType === "mouse" || event.button !== 0) {
         return;
